@@ -1,0 +1,16 @@
+{
+  "name": "gstack-web2skill",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ingest:album": "bun run src/cli/ingestAlbum.ts",
+    "inspect:category": "bun run src/cli/inspectCategory.ts",
+    "ingest:category": "bun run src/cli/ingestCategory.ts",
+    "skill:catalog": "bun run src/cli/catalogSkill.ts",
+    "migrate:sqlite-to-pg": "bun run src/cli/migrateSqliteToPostgres.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "pg": "^8.20.0"
+  }
+}

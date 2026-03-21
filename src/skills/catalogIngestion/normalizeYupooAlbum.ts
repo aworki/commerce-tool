@@ -1,0 +1,30 @@
+import type { CatalogItem, RawYupooAlbum } from "./types.ts"
+
+function compactText(input: string): string {
+  return input.replace(/\s+/g, " ").trim()
+}
+
+export function normalizeYupooAlbum(raw: RawYupooAlbum): CatalogItem {
+  return {
+    sourceSite: raw.sourceSite,
+    sourceType: raw.sourceType,
+    sourceUrl: raw.sourceUrl,
+    sourceId: raw.albumId,
+    title: compactText(raw.rawTitle),
+    description: compactText(raw.rawDescription),
+    images: raw.imageUrls,
+    extra: {
+      source_url: raw.sourceUrl,
+      source_site: raw.sourceSite,
+      source_type: raw.sourceType,
+      album_id: raw.albumId,
+      shop_name: raw.shopName ?? null,
+      owner: raw.owner ?? null,
+      image_count: raw.imageUrls.length,
+      date_published: raw.datePublished ?? null,
+      date_modified: raw.dateModified ?? null,
+      raw_title: raw.rawTitle,
+      mode: "album",
+    },
+  }
+}
