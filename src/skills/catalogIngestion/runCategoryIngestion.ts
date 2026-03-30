@@ -30,7 +30,19 @@ function defaultDeps(): CategoryIngestionDeps {
       if (!response.ok) throw new Error(`category page load failed: ${response.status}`)
       return response.text()
     },
-    runAlbum: (url: string) => runAlbumIngestion({ mode: "album", url }),
+    runAlbum: (input) => runAlbumIngestion(input),
+  }
+}
+
+function buildAlbumInput(url: string, page: ParsedYupooCategoryPage, categoryUrl: string) {
+  return {
+    mode: "album" as const,
+    url,
+    categoryContext: {
+      categoryId: page.categoryId,
+      categoryTitle: page.categoryTitle,
+      categoryUrl,
+    },
   }
 }
 
@@ -53,7 +65,7 @@ export async function runCategoryIngestion(
       for (const albumUrl of currentPage.albumUrls) {
         if (seen.has(albumUrl)) continue
         seen.add(albumUrl)
-        albumResults.push(await deps.runAlbum(albumUrl))
+        albumResults.push(await deps.runAlbum(buildAlbumInput(albumUrl, currentPage, input.url)))
       }
 
       pagesFetched += 1
@@ -70,7 +82,7 @@ export async function runCategoryIngestion(
       sourceType: "category",
       sourceUrl: input.url,
       estimatedTotalAlbums: firstPage.estimatedTotalAlbums,
-      plannedPages,
+      plannedPages: pagesFetched,
       processedAlbums: albumResults.length,
       inserted: summary.inserted,
       updated: summary.updated,

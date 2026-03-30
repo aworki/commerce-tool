@@ -1,0 +1,41 @@
+{
+  "skill_name": "catalog-ingestion",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "把这个 Yupoo 单条商品抓下来并落到默认数据库：https://lol2021.x.yupoo.com/albums/225167978?uid=1&isSubCate=false",
+      "expected_output": "识别为 album ingest，执行单条入库，返回 inserted/updated/skipped 结果以及对应 sourceUrl。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "先帮我看看这个分类大概有多少条，再按前 50 条的规模抓取并落库：https://lol2021.x.yupoo.com/categories/4372478",
+      "expected_output": "先做 category inspection，返回 estimatedTotalAlbums 和 plannedPages，然后可以按 limit=50 执行 category ingest。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "把这个 Yupoo 分类前100个品爬下来并落到默认数据库： https://lol2021.x.yupoo.com/categories/3779642 这是高奢分类。",
+      "expected_output": "识别为 category ingest，limit=100，按页粗控估算并分页执行，最终返回 inserted/updated/skipped/failed summary。",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "这个分类我想先试小一点，先抓 20 条看看：https://lol2021.x.yupoo.com/categories/4372478",
+      "expected_output": "识别为 category inspect + category ingest 场景；如果没有明确 limit，则要求用户提供正整数 limit，不能直接开跑。",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "帮我把这个网站的数据都抓下来：https://example.com/products",
+      "expected_output": "拒绝。因为不是 Yupoo album/category URL，也不是 skill 支持的输入形态。",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "把这个 Yupoo 分类全部爬完：https://lol2021.x.yupoo.com/categories/3779642",
+      "expected_output": "拒绝直接执行，要求用户提供正整数 limit，而不是接受无限制 category ingest。",
+      "files": []
+    }
+  ]
+}

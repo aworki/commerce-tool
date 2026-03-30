@@ -1,16 +1,11 @@
 import { parseYupooAlbumId } from "../../lib/urls.ts"
+import { extractAlbumImageSources } from "./extractAlbumImageSources.ts"
 import type { RawYupooAlbum } from "./types.ts"
 
 type JsonLdNode = Record<string, unknown>
 
 function firstString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined
-}
-
-function asStringArray(value: unknown): string[] {
-  if (typeof value === "string") return [value]
-  if (!Array.isArray(value)) return []
-  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
 }
 
 function flattenJsonLd(input: unknown): JsonLdNode[] {
@@ -107,34 +102,6 @@ function extractVisibleDescription(html: string, rawTitle: string): string {
   return cleanDescription(snippet)
 }
 
-function imageRank(url: string): number {
-  if (url.includes("/small.jpg")) return 1
-  if (url.includes("/medium.jpg")) return 2
-  return 3
-}
-
-function imageGroupKey(url: string): string {
-  const match = url.match(/photo\.yupoo\.com\/([^/]+)\/([^/]+)\//)
-  return match ? `${match[1]}/${match[2]}` : url
-}
-
-function extractPhotoUrls(html: string): string[] {
-  const matches = html.match(/(?:https?:)?\/\/photo\.yupoo\.com\/[^"'\s<>]+\.jpg/gi) ?? []
-  const byGroup = new Map<string, string>()
-
-  for (const rawUrl of matches) {
-    const normalized = rawUrl.startsWith("//") ? `https:${rawUrl}` : rawUrl
-    const key = imageGroupKey(normalized)
-    const existing = byGroup.get(key)
-
-    if (!existing || imageRank(normalized) > imageRank(existing)) {
-      byGroup.set(key, normalized)
-    }
-  }
-
-  return [...byGroup.values()]
-}
-
 function extractDateList(html: string): string[] {
   return uniqueStrings(html.match(/20\d{2}-\d{2}-\d{2}/g) ?? [])
 }
@@ -153,10 +120,7 @@ export function parseYupooAlbumHtml(html: string, url: string): RawYupooAlbum {
     extractTitleFallback(html) ??
     ""
 
-  const imageUrls = uniqueStrings([
-    ...asStringArray(gallery?.image),
-    ...extractPhotoUrls(html),
-  ])
+  const extractedImages = extractAlbumImageSources(html)
 
   const rawDescription =
     cleanDescription(firstString(gallery?.description) ?? "") ||
@@ -168,7 +132,6 @@ export function parseYupooAlbumHtml(html: string, url: string): RawYupooAlbum {
   const dateList = extractDateList(html)
 
   if (!rawTitle) throw new Error("extraction failed: missing title")
-  if (imageUrls.length === 0) throw new Error("extraction failed: missing images")
 
   return {
     sourceUrl,
@@ -179,10 +142,11 @@ export function parseYupooAlbumHtml(html: string, url: string): RawYupooAlbum {
     owner,
     rawTitle,
     rawDescription,
-    imageUrls,
+    sourceImageUrls: extractedImages.sourceImageUrls,
+    logicalImageCount: extractedImages.logicalImageCount,
     datePublished: firstString(gallery?.datePublished) ?? dateList[0],
     dateModified: firstString(gallery?.dateModified) ?? dateList.at(-1),
-    rawJsonLd: gallery ?? { "@type": "ImageGallery", image: imageUrls },
+    rawJsonLd: gallery ?? { "@type": "ImageGallery" },
   }
 }
 

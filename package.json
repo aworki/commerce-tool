@@ -7,10 +7,15 @@
     "inspect:category": "bun run src/cli/inspectCategory.ts",
     "ingest:category": "bun run src/cli/ingestCategory.ts",
     "skill:catalog": "bun run src/cli/catalogSkill.ts",
-    "migrate:sqlite-to-pg": "bun run src/cli/migrateSqliteToPostgres.ts",
-    "test": "bun test"
+    "transform:shoes": "bun run src/cli/transformShoes.ts",
+    "workflow:shoes-category-export": "bun run src/cli/crawlAndExportShoesCategory.ts",
+    "skill:shoes-transformer": "bun run src/cli/shoesTransformerSkill.ts",
+    "test": "bun test",
+    "test:bootstrap": "bun test src/bootstrap"
   },
   "dependencies": {
+    "ali-oss": "^6.22.0",
+    "exceljs": "^4.4.0",
     "pg": "^8.20.0"
   }
 }

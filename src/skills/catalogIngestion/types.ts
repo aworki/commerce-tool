@@ -1,6 +1,13 @@
+export type CategoryContext = {
+  categoryId: string
+  categoryTitle: string
+  categoryUrl: string
+}
+
 export type AlbumIngestionInput = {
   mode: "album"
   url: string
+  categoryContext?: CategoryContext
 }
 
 export type CategoryIngestionInput = {
@@ -12,6 +19,11 @@ export type CategoryIngestionInput = {
 export type CatalogSkillInput = AlbumIngestionInput | CategoryIngestionInput
 export type CatalogIngestionInput = AlbumIngestionInput
 
+export type ExtractedAlbumImages = {
+  sourceImageUrls: string[]
+  logicalImageCount: number
+}
+
 export type RawYupooAlbum = {
   sourceUrl: string
   sourceSite: "yupoo"
@@ -21,10 +33,25 @@ export type RawYupooAlbum = {
   owner?: string
   rawTitle: string
   rawDescription: string
-  imageUrls: string[]
+  sourceImageUrls: string[]
+  logicalImageCount: number
   datePublished?: string
   dateModified?: string
   rawJsonLd?: unknown
+}
+
+export type ResolvedAlbumCategoryContext = {
+  categoryId?: string
+  categoryTitle?: string
+  categoryUrl?: string
+  storageCategoryId: string
+}
+
+export type MaterializeAlbumImagesInput = {
+  albumId: string
+  sourceUrl: string
+  storageCategoryId: string
+  sourceImageUrls: string[]
 }
 
 export type CatalogItem = {
@@ -71,7 +98,7 @@ export type ParsedYupooCategoryPage = {
 
 export type CategoryIngestionDeps = {
   fetchCategoryPage: (url: string) => Promise<string>
-  runAlbum: (url: string) => Promise<AlbumIngestionResult>
+  runAlbum: (input: AlbumIngestionInput) => Promise<AlbumIngestionResult>
 }
 
 export type CategoryIngestionResult = {

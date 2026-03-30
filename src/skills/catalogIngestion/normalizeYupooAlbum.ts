@@ -1,10 +1,14 @@
-import type { CatalogItem, RawYupooAlbum } from "./types.ts"
+import type { CatalogItem, RawYupooAlbum, ResolvedAlbumCategoryContext } from "./types.ts"
 
 function compactText(input: string): string {
   return input.replace(/\s+/g, " ").trim()
 }
 
-export function normalizeYupooAlbum(raw: RawYupooAlbum): CatalogItem {
+export function normalizeYupooAlbum(
+  raw: RawYupooAlbum,
+  ossImageUrls: string[],
+  resolvedCategoryContext: ResolvedAlbumCategoryContext,
+): CatalogItem {
   return {
     sourceSite: raw.sourceSite,
     sourceType: raw.sourceType,
@@ -12,7 +16,7 @@ export function normalizeYupooAlbum(raw: RawYupooAlbum): CatalogItem {
     sourceId: raw.albumId,
     title: compactText(raw.rawTitle),
     description: compactText(raw.rawDescription),
-    images: raw.imageUrls,
+    images: ossImageUrls,
     extra: {
       source_url: raw.sourceUrl,
       source_site: raw.sourceSite,
@@ -20,10 +24,13 @@ export function normalizeYupooAlbum(raw: RawYupooAlbum): CatalogItem {
       album_id: raw.albumId,
       shop_name: raw.shopName ?? null,
       owner: raw.owner ?? null,
-      image_count: raw.imageUrls.length,
+      image_count: raw.logicalImageCount,
       date_published: raw.datePublished ?? null,
       date_modified: raw.dateModified ?? null,
       raw_title: raw.rawTitle,
+      category_id: resolvedCategoryContext.categoryId ?? null,
+      category_title: resolvedCategoryContext.categoryTitle ?? null,
+      category_url: resolvedCategoryContext.categoryUrl ?? null,
       mode: "album",
     },
   }

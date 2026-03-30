@@ -1,13 +1,60 @@
 import { extractYupooAlbum } from "./extractYupooAlbum.ts"
+import { resolveAlbumCategoryContext } from "./loadExistingAlbumContext.ts"
+import { materializeAlbumImagesToOss } from "./materializeAlbumImagesToOss.ts"
 import { normalizeYupooAlbum } from "./normalizeYupooAlbum.ts"
 import { persistCatalogItem } from "./persistCatalogItem.ts"
-import type { CatalogIngestionInput, CatalogIngestionResult } from "./types.ts"
+import type {
+  CatalogIngestionInput,
+  CatalogIngestionResult,
+  CategoryContext,
+  RawYupooAlbum,
+  ResolvedAlbumCategoryContext,
+} from "./types.ts"
 
-export async function runAlbumIngestion(input: CatalogIngestionInput): Promise<CatalogIngestionResult> {
+type AlbumIngestionDeps = {
+  extractAlbum: (url: string) => Promise<RawYupooAlbum>
+  resolveCategoryContext: (args: {
+    albumId: string
+    inputCategoryContext?: CategoryContext
+  }) => Promise<ResolvedAlbumCategoryContext>
+  materializeImages: (args: {
+    albumId: string
+    sourceUrl: string
+    storageCategoryId: string
+    sourceImageUrls: string[]
+  }) => Promise<string[]>
+  persistItem: typeof persistCatalogItem
+}
+
+function defaultDeps(): AlbumIngestionDeps {
+  return {
+    extractAlbum: extractYupooAlbum,
+    resolveCategoryContext: ({ albumId, inputCategoryContext }) =>
+      resolveAlbumCategoryContext({ albumId, inputCategoryContext }),
+    materializeImages: ({ albumId, sourceUrl, storageCategoryId, sourceImageUrls }) =>
+      materializeAlbumImagesToOss({ albumId, sourceUrl, storageCategoryId, sourceImageUrls }),
+    persistItem: persistCatalogItem,
+  }
+}
+
+export async function runAlbumIngestion(
+  input: CatalogIngestionInput,
+  deps: AlbumIngestionDeps = defaultDeps(),
+): Promise<CatalogIngestionResult> {
   try {
-    const rawAlbum = await extractYupooAlbum(input.url)
-    const item = normalizeYupooAlbum(rawAlbum)
-    const persist = await persistCatalogItem(item)
+    const rawAlbum = await deps.extractAlbum(input.url)
+    const resolvedCategoryContext = await deps.resolveCategoryContext({
+      albumId: rawAlbum.albumId,
+      inputCategoryContext: input.categoryContext,
+    })
+    const ossImageUrls = await deps.materializeImages({
+      albumId: rawAlbum.albumId,
+      sourceUrl: rawAlbum.sourceUrl,
+      storageCategoryId: resolvedCategoryContext.storageCategoryId,
+      sourceImageUrls: rawAlbum.sourceImageUrls,
+    })
+    const item = normalizeYupooAlbum(rawAlbum, ossImageUrls, resolvedCategoryContext)
+    const persist = await deps.persistItem(item)
 
     return {
       status: "success",

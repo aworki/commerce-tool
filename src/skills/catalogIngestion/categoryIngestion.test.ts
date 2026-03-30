@@ -64,9 +64,9 @@ describe("category ingestion", () => {
     expect(parsed.nextPageUrl).toBe(PAGE_2_URL)
   })
 
-  test("runs category ingestion as a best-effort orchestrator and stops after estimated page count", async () => {
+  test("runs category ingestion as a best-effort orchestrator and passes category context into each album crawl", async () => {
     const fetchedPages: string[] = []
-    const processedAlbums: string[] = []
+    const processedAlbums: Array<{ url: string, categoryId?: string, categoryTitle?: string, categoryUrl?: string }> = []
 
     const result = await runCategoryIngestion(
       {
@@ -81,14 +81,19 @@ describe("category ingestion", () => {
           if (url === PAGE_2_URL) return CATEGORY_PAGE_2_HTML
           throw new Error(`unexpected page fetch: ${url}`)
         },
-        runAlbum: async (url) => {
-          processedAlbums.push(url)
+        runAlbum: async (input) => {
+          processedAlbums.push({
+            url: input.url,
+            categoryId: input.categoryContext?.categoryId,
+            categoryTitle: input.categoryContext?.categoryTitle,
+            categoryUrl: input.categoryContext?.categoryUrl,
+          })
 
-          if (url.includes("229183594")) {
+          if (input.url.includes("229183594")) {
             return {
               status: "error",
               sourceType: "album",
-              sourceUrl: url,
+              sourceUrl: input.url,
               inserted: 0,
               updated: 0,
               skipped: 0,
@@ -99,7 +104,7 @@ describe("category ingestion", () => {
           return {
             status: "success",
             sourceType: "album",
-            sourceUrl: url,
+            sourceUrl: input.url,
             inserted: 1,
             updated: 0,
             skipped: 0,
@@ -110,11 +115,36 @@ describe("category ingestion", () => {
 
     expect(fetchedPages).toEqual([CATEGORY_URL, PAGE_2_URL])
     expect(processedAlbums).toEqual([
-      "https://lol2021.x.yupoo.com/albums/229183591?uid=1&isSubCate=false&referrercate=4372478",
-      "https://lol2021.x.yupoo.com/albums/229183592?uid=1&isSubCate=false&referrercate=4372478",
-      "https://lol2021.x.yupoo.com/albums/229183593?uid=1&isSubCate=false&referrercate=4372478",
-      "https://lol2021.x.yupoo.com/albums/229183594?uid=1&isSubCate=false&referrercate=4372478",
-      "https://lol2021.x.yupoo.com/albums/229183595?uid=1&isSubCate=false&referrercate=4372478",
+      {
+        url: "https://lol2021.x.yupoo.com/albums/229183591?uid=1&isSubCate=false&referrercate=4372478",
+        categoryId: "4372478",
+        categoryTitle: "【乔丹1代系列】",
+        categoryUrl: CATEGORY_URL,
+      },
+      {
+        url: "https://lol2021.x.yupoo.com/albums/229183592?uid=1&isSubCate=false&referrercate=4372478",
+        categoryId: "4372478",
+        categoryTitle: "【乔丹1代系列】",
+        categoryUrl: CATEGORY_URL,
+      },
+      {
+        url: "https://lol2021.x.yupoo.com/albums/229183593?uid=1&isSubCate=false&referrercate=4372478",
+        categoryId: "4372478",
+        categoryTitle: "【乔丹1代系列】",
+        categoryUrl: CATEGORY_URL,
+      },
+      {
+        url: "https://lol2021.x.yupoo.com/albums/229183594?uid=1&isSubCate=false&referrercate=4372478",
+        categoryId: "4372478",
+        categoryTitle: "【乔丹1代系列】",
+        categoryUrl: CATEGORY_URL,
+      },
+      {
+        url: "https://lol2021.x.yupoo.com/albums/229183595?uid=1&isSubCate=false&referrercate=4372478",
+        categoryId: "4372478",
+        categoryTitle: "【乔丹1代系列】",
+        categoryUrl: CATEGORY_URL,
+      },
     ])
 
     expect(result.status).toBe("success")
@@ -126,5 +156,39 @@ describe("category ingestion", () => {
     expect(result.failed).toBe(1)
     expect(result.albumResults[3].status).toBe("error")
     expect(result.albumResults[3].sourceUrl).toContain("229183594")
+  })
+
+  test("counts skipped albums without losing category context", async () => {
+    const seenContexts: string[] = []
+
+    const result = await runCategoryIngestion(
+      {
+        mode: "category",
+        url: CATEGORY_URL,
+        limit: 2,
+      },
+      {
+        fetchCategoryPage: async () => CATEGORY_PAGE_1_HTML,
+        runAlbum: async (input) => {
+          seenContexts.push(`${input.categoryContext?.categoryId}|${input.categoryContext?.categoryTitle}|${input.categoryContext?.categoryUrl}`)
+          return {
+            status: "success",
+            sourceType: "album",
+            sourceUrl: input.url,
+            inserted: 0,
+            updated: 0,
+            skipped: 1,
+          }
+        },
+      },
+    )
+
+    expect(seenContexts).toEqual([
+      `4372478|【乔丹1代系列】|${CATEGORY_URL}`,
+      `4372478|【乔丹1代系列】|${CATEGORY_URL}`,
+      `4372478|【乔丹1代系列】|${CATEGORY_URL}`,
+    ])
+    expect(result.skipped).toBe(3)
+    expect(result.processedAlbums).toBe(3)
   })
 })
