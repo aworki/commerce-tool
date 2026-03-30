@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto"
+import {
+  buildCanonicalAliyunOssPublicUrl,
+  getRequiredAliyunOssPublicBaseUrl,
+} from "../../lib/urls.ts"
 import type { MaterializeAlbumImagesInput } from "./types.ts"
 
 type OssConfig = {
@@ -71,10 +75,6 @@ async function downloadSourceImage(args: {
   throw lastError
 }
 
-function trimTrailingSlash(value: string): string {
-  return value.replace(/\/+$/, "")
-}
-
 function getRequiredEnv(env: NodeJS.ProcessEnv, key: (typeof REQUIRED_OSS_ENV)[number]): string {
   const value = env[key]?.trim()
   if (!value) throw new Error(`missing OSS configuration: ${key}`)
@@ -134,9 +134,7 @@ export function buildAlbumImageObjectKey(args: {
   return `catalog/yupoo/${args.storageCategoryId}/${args.albumId}/${index}-${digest}.${extension}`
 }
 
-export function buildPublicOssUrl(baseUrl: string, objectKey: string) {
-  return `${trimTrailingSlash(baseUrl)}/${objectKey.replace(/^\/+/, "")}`
-}
+export const buildPublicOssUrl = buildCanonicalAliyunOssPublicUrl
 
 async function createDefaultOssClient(config: OssConfig): Promise<OssClient> {
   const ossModule = await import("ali-oss")
@@ -156,7 +154,7 @@ export async function materializeAlbumImagesToOss(args: MaterializeAlbumImagesAr
     accessKeyId: getRequiredEnv(env, "ALIYUN_OSS_ACCESS_KEY_ID"),
     accessKeySecret: getRequiredEnv(env, "ALIYUN_OSS_ACCESS_KEY_SECRET"),
   })
-  const publicBaseUrl = getRequiredEnv(env, "ALIYUN_OSS_PUBLIC_BASE_URL")
+  const publicBaseUrl = getRequiredAliyunOssPublicBaseUrl(env)
 
   const urls: string[] = []
 

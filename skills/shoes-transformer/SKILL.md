@@ -6,9 +6,9 @@ description: Use when the user wants to export already-crawled shoe catalog item
 # shoes-transformer
 
 ## Overview
-This skill exports shoe products that already exist in `catalog_items` into the Excel import template format.
+This skill is the single base export entrypoint for shoe workbooks. It exports shoe products that already exist in `catalog_items` into the Excel import template format.
 
-It does not crawl Yupoo pages and should stay decoupled from `catalog-ingestion`.
+It does not crawl Yupoo pages and should stay decoupled from `catalog-ingestion`. Workbook image cells must come from the canonical OSS public URLs already stored in `catalog_items.images_json`; if a row still contains legacy non-OSS image URLs, fix the data upstream instead of expecting export-time replacement.
 
 ## Accepted Inputs
 Use selectors that already exist in the local database:

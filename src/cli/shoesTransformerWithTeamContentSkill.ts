@@ -5,6 +5,7 @@ import {
   formatShoesTransformUsage,
   parseShoesTransformArgs,
 } from "./parseShoesTransformArgs.ts"
+import { runShoesTransformExecution } from "../skills/shoesTransformer/runShoesTransform.ts"
 import { runShoesTransformerWithTeamContent } from "../skills/shoesTransformer/runShoesTransformerWithTeamContent.ts"
 import type { TeamContentTemplateInput } from "../skills/shoesTransformer/validateTeamContentTemplate.ts"
 
@@ -114,8 +115,9 @@ const readline = createInterface({
 
 try {
   const input = parseShoesTransformArgs(process.argv.slice(2))
+  const execution = await runShoesTransformExecution(input)
   const result = await runShoesTransformerWithTeamContent({
-    input,
+    execution,
     askShouldPostfill: async () => askYesNo(
       readline,
       "Fill 商品描述 / 关键信息 / SEO标题 / SEO描述 with team content? [y/N] ",
@@ -125,11 +127,18 @@ try {
     collectTemplateValues: async () => collectTemplateValues(readline),
   })
 
-  console.log(JSON.stringify(result, null, 2))
-
-  if (result.exportResult.status === "error" || result.postfill.status === "error") {
+  if (execution.status === "error") {
+    console.log(JSON.stringify(result, null, 2))
     process.exit(1)
   }
+
+  console.log(JSON.stringify(result, null, 2))
+
+  if (result.postfill.status === "error") {
+    process.exit(1)
+  }
+
+  process.exit(0)
 } catch (error) {
   console.error(error instanceof Error ? error.message : "unknown error")
   console.error(SHOES_TRANSFORM_WITH_TEAM_CONTENT_USAGE)

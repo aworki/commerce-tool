@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, mock, test } from "bun:test"
 import {
   resolveShoesTemplatePath,
   runShoesTransformExecution,
@@ -6,6 +6,8 @@ import {
 } from "./runShoesTransform.ts"
 import type { CatalogItemRecord } from "../../db/catalogItems.ts"
 import type { ShoesWorkbookRow } from "./types.ts"
+
+const VALID_OSS_PUBLIC_BASE_URL = "https://cdn.example.com"
 
 function createCatalogItem(overrides: Partial<CatalogItemRecord> = {}): CatalogItemRecord {
   return {
@@ -16,7 +18,10 @@ function createCatalogItem(overrides: Partial<CatalogItemRecord> = {}): CatalogI
     sourceId: "225167978",
     title: "【DA7OG】粉低勾 OG版乔丹1代低帮 IQ7604-100 Travis Scott x Air Jordan 1 Retro Low OG 'Muslin Pink'",
     description: "尺码#36-#37 545126646 OG乔1",
-    images: ["https://img.example/cover.jpg", "https://img.example/2.jpg"],
+    images: [
+      `${VALID_OSS_PUBLIC_BASE_URL}/catalog/yupoo/4372478/225167978/00-cover.jpg`,
+      `${VALID_OSS_PUBLIC_BASE_URL}/catalog/yupoo/4372478/225167978/01-gallery.jpg`,
+    ],
     extra: {},
     createdAt: "2026-03-27T00:00:00.000Z",
     updatedAt: "2026-03-27T00:00:00.000Z",
@@ -56,7 +61,20 @@ describe("resolveShoesTemplatePath", () => {
 })
 
 describe("runShoesTransformExecution", () => {
+  const originalOssBaseUrl = process.env.ALIYUN_OSS_PUBLIC_BASE_URL
+
+  afterEach(() => {
+    if (originalOssBaseUrl === undefined) {
+      delete process.env.ALIYUN_OSS_PUBLIC_BASE_URL
+      return
+    }
+
+    process.env.ALIYUN_OSS_PUBLIC_BASE_URL = originalOssBaseUrl
+  })
+
   test("returns a deterministic manifest with each product's first workbook row", async () => {
+    process.env.ALIYUN_OSS_PUBLIC_BASE_URL = VALID_OSS_PUBLIC_BASE_URL
+
     const writtenRows: ShoesWorkbookRow[][] = []
 
     const result = await runShoesTransformExecution(
@@ -71,14 +89,17 @@ describe("runShoesTransformExecution", () => {
             sourceId: "alpha-1",
             title: "【AA1KF】复刻公牛 本地版乔丹4代篮SB联名球鞋 FV5029-006 Air Jordan 4 \"Bred Reimagined\"",
             description: "没有尺码信息",
-            images: ["https://img.example/alpha-cover.jpg"],
+            images: [`${VALID_OSS_PUBLIC_BASE_URL}/catalog/yupoo/alpha/alpha-1/00-cover.jpg`],
           }),
           createCatalogItem({
             id: 2,
             sourceId: "beta-2",
             title: "【CA0XH】复刻愤怒的公牛 头层皮乔丹4代篮球鞋 FQ8138-600 Air Jordan 4 Retro 'Toro Bravo' 2026",
             description: "尺码 40/40.5/41",
-            images: ["https://img.example/beta-cover.jpg", "https://img.example/beta-gallery.jpg"],
+            images: [
+              `${VALID_OSS_PUBLIC_BASE_URL}/catalog/yupoo/beta/beta-2/00-cover.jpg`,
+              `${VALID_OSS_PUBLIC_BASE_URL}/catalog/yupoo/beta/beta-2/01-gallery.jpg`,
+            ],
           }),
         ],
         writeShoesWorkbook: async ({ rows }) => {
@@ -105,6 +126,62 @@ describe("runShoesTransformExecution", () => {
     ])
     expect(writtenRows).toHaveLength(1)
     expect(writtenRows[0]).toHaveLength(4)
+  })
+
+  test("fails before writing when a catalog item still has legacy non-OSS image urls", async () => {
+    process.env.ALIYUN_OSS_PUBLIC_BASE_URL = VALID_OSS_PUBLIC_BASE_URL
+    const writeShoesWorkbook = mock(async () => undefined)
+
+    const result = await runShoesTransformExecution(
+      {
+        outputPath: "/tmp/shoes-output.xlsx",
+        templatePath: "/tmp/shoes-template.xlsx",
+      },
+      {
+        loadCatalogItems: async () => [
+          createCatalogItem({
+            sourceId: "legacy-1",
+            images: ["https://photo.yupoo.com/lol2021/legacy/raw-a.jpg"],
+          }),
+        ],
+        writeShoesWorkbook,
+      },
+    )
+
+    expect(result.status).toBe("error")
+    expect(result.error).toContain("legacy-1")
+    expect(result.error).toContain("canonical OSS image URLs")
+    expect(writeShoesWorkbook).not.toHaveBeenCalled()
+  })
+
+  test("allows empty image lists to continue through the existing warning path", async () => {
+    process.env.ALIYUN_OSS_PUBLIC_BASE_URL = VALID_OSS_PUBLIC_BASE_URL
+    const writeShoesWorkbook = mock(async () => undefined)
+
+    const result = await runShoesTransformExecution(
+      {
+        outputPath: "/tmp/shoes-output.xlsx",
+        templatePath: "/tmp/shoes-template.xlsx",
+      },
+      {
+        loadCatalogItems: async () => [
+          createCatalogItem({
+            sourceId: "missing-cover-1",
+            images: [],
+          }),
+        ],
+        writeShoesWorkbook,
+      },
+    )
+
+    expect(result.status).toBe("success")
+    expect(result.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        sourceId: "missing-cover-1",
+        kind: "missing_cover_image",
+      }),
+    ]))
+    expect(writeShoesWorkbook).toHaveBeenCalledTimes(1)
   })
 })
 

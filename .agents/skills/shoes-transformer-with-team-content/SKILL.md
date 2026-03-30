@@ -6,9 +6,9 @@ description: Use when the user wants to export already-crawled shoe catalog item
 # shoes-transformer-with-team-content
 
 ## Overview
-This skill wraps the existing shoe export flow and keeps the same DB selectors, workbook output, and template resolution rules.
+This skill is an interactive postfill wrapper over the base `shoes-transformer` export flow. It keeps the same DB selectors, workbook output, and template resolution rules.
 
-It stays separate from the non-interactive `shoes-transformer` entrypoints and adds an interactive postfill step only after a successful export.
+It does not own a separate export pipeline. It first delegates workbook generation to `shoes-transformer`, which already requires DB-backed canonical OSS image URLs, and then adds the optional team-template replace/postfill step only after a successful export.
 
 ## Accepted Inputs
 Use the same selectors as `shoes-transformer`:

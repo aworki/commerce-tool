@@ -11,6 +11,8 @@ Image extraction must stop relying on global page-wide regex matching as the pri
 
 This change is intentionally narrow at the schema and workflow level: it does not add columns or change non-image business rules, but it does intentionally change the persisted image-derived payloads that are coupled to image extraction, including `images_json`, `extra_json.image_count`, and the resulting `content_hash` values.
 
+The downstream export contract is also explicit: `catalog_items.images_json` becomes the single source of truth for workbook image cells, and `shoes-transformer` must only export canonical OSS public URLs from the database. Export does not upload, rewrite, or repair image URLs at export time.
+
 ## Goals
 
 - Persist OSS-hosted image URLs in `catalog_items.images_json`.

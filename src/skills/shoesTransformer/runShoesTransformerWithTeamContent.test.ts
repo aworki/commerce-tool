@@ -1,16 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import type { TeamShoesTemplateRecord } from "../../db/teamShoesTemplates.ts"
 import { runShoesTransformerWithTeamContent } from "./runShoesTransformerWithTeamContent.ts"
-import type { ShoesTransformExecution, ShoesTransformInput } from "./types.ts"
-
-function createInput(): ShoesTransformInput {
-  return {
-    categoryIds: ["5057073"],
-    outputPath: "/tmp/shoes-export.xlsx",
-    templatePath: "/tmp/shoes-template.xlsx",
-    tags: ["鞋类", "运动鞋", "低帮鞋"],
-  }
-}
+import type { ShoesTransformExecution } from "./types.ts"
 
 function createExecution(overrides: Partial<ShoesTransformExecution> = {}): ShoesTransformExecution {
   return {
@@ -76,12 +67,38 @@ function createTemplateRecord(overrides: Partial<TeamShoesTemplateRecord> = {}):
 }
 
 describe("runShoesTransformerWithTeamContent", () => {
+  test("skips prompting when the base export already failed", async () => {
+    const result = await runShoesTransformerWithTeamContent({
+      execution: createExecution({
+        status: "error",
+        exportedItems: 0,
+        exportedRows: 0,
+        warnings: [],
+        manifest: [],
+        error: "legacy images must be re-ingested",
+      }),
+      askShouldPostfill: async () => {
+        throw new Error("should not prompt when export failed")
+      },
+    })
+
+    expect(result.exportResult).toEqual({
+      status: "error",
+      outputPath: "/tmp/shoes-export.xlsx",
+      exportedItems: 0,
+      exportedRows: 0,
+      warnings: [],
+      error: "legacy images must be re-ingested",
+    })
+    expect(result.postfill).toEqual({ status: "skipped" })
+    expect(result.finalWarnings).toEqual([])
+  })
+
   test("returns the base export result unchanged when postfill is declined", async () => {
     const execution = createExecution()
 
     const result = await runShoesTransformerWithTeamContent({
-      input: createInput(),
-      runExecution: async () => execution,
+      execution,
       askShouldPostfill: async () => false,
     })
 
@@ -102,8 +119,7 @@ describe("runShoesTransformerWithTeamContent", () => {
     const existingTemplate = createTemplateRecord({ id: 11, teamDescription: "Existing Team" })
 
     const result = await runShoesTransformerWithTeamContent({
-      input: createInput(),
-      runExecution: async () => execution,
+      execution,
       askShouldPostfill: async () => true,
       listTemplates: async () => [existingTemplate],
       chooseTemplateAction: async () => "existing",
@@ -159,8 +175,7 @@ describe("runShoesTransformerWithTeamContent", () => {
     const createdTemplate = createTemplateRecord({ id: 12, teamDescription: "New Team" })
 
     const result = await runShoesTransformerWithTeamContent({
-      input: createInput(),
-      runExecution: async () => execution,
+      execution,
       askShouldPostfill: async () => true,
       listTemplates: async () => [existingTemplate],
       chooseTemplateAction: async () => "create",
@@ -217,8 +232,7 @@ describe("runShoesTransformerWithTeamContent", () => {
     const createdTemplate = createTemplateRecord({ id: 21, teamDescription: "Empty State Team" })
 
     const result = await runShoesTransformerWithTeamContent({
-      input: createInput(),
-      runExecution: async () => execution,
+      execution,
       askShouldPostfill: async () => true,
       listTemplates: async () => [],
       chooseTemplateAction: async () => {

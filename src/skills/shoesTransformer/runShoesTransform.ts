@@ -1,3 +1,7 @@
+import {
+  getRequiredAliyunOssPublicBaseUrl,
+  isCanonicalAliyunOssPublicUrl,
+} from "../../lib/urls.ts"
 import { buildWorkbookRows } from "./buildWorkbookRows.ts"
 import { loadCatalogItems } from "./loadCatalogItems.ts"
 import { normalizeCatalogItemForShoes } from "./normalizeCatalogItemForShoes.ts"
@@ -64,6 +68,32 @@ function normalizeTags(tags: string[] | undefined): string[] {
   return (tags ?? []).map((tag) => tag.trim()).filter(Boolean)
 }
 
+function assertCatalogItemsUseAliyunOssImages(items: { sourceId: string; images: string[] }[]) {
+  const itemsWithImages = items.filter((item) => item.images.length > 0)
+
+  if (itemsWithImages.length === 0) {
+    return
+  }
+
+  const publicBaseUrl = getRequiredAliyunOssPublicBaseUrl()
+  const invalidItems = itemsWithImages
+    .map((item) => ({
+      sourceId: item.sourceId,
+      invalidUrls: item.images.filter((imageUrl) => !isCanonicalAliyunOssPublicUrl(imageUrl, publicBaseUrl)),
+    }))
+    .filter((item) => item.invalidUrls.length > 0)
+
+  if (invalidItems.length === 0) {
+    return
+  }
+
+  const details = invalidItems
+    .map((item) => `${item.sourceId}: ${item.invalidUrls.join(", ")}`)
+    .join("; ")
+
+  throw new Error(`shoes export requires canonical OSS image URLs in catalog_items.images_json; re-run catalog-ingestion for these sourceIds: ${details}`)
+}
+
 export function toShoesTransformResult(execution: ShoesTransformExecution): ShoesTransformResult {
   const { manifest: _manifest, ...result } = execution
   return result
@@ -81,6 +111,8 @@ export async function runShoesTransformExecution(
       categoryIds: input.categoryIds,
       categoryUrls: input.categoryUrls,
     })
+
+    assertCatalogItemsUseAliyunOssImages(items)
 
     const normalizedItems = items.map((item) => normalizeCatalogItemForShoes(item, {
       tags: normalizeTags(input.tags),

@@ -6,13 +6,12 @@ import {
 } from "../../db/teamShoesTemplates.ts"
 import { applyTeamContentPostfill } from "./applyTeamContentPostfill.ts"
 import { reconcilePostfillWarnings } from "./reconcilePostfillWarnings.ts"
-import { runShoesTransformExecution, toShoesTransformResult } from "./runShoesTransform.ts"
+import { toShoesTransformResult } from "./runShoesTransform.ts"
 import { validateTeamContentTemplate, type TeamContentTemplateInput } from "./validateTeamContentTemplate.ts"
 import type {
   ShoesTeamContentPostfillAppliedSummary,
   ShoesTeamContentPostfillWarning,
   ShoesTransformExecution,
-  ShoesTransformInput,
   ShoesTransformResult,
   ShoesTransformWarning,
 } from "./types.ts"
@@ -42,8 +41,7 @@ export type ShoesTransformerWithTeamContentResult = {
 type ExistingOrCreate = "existing" | "create"
 
 type RunShoesTransformerWithTeamContentOptions = {
-  input: ShoesTransformInput
-  runExecution?: typeof runShoesTransformExecution
+  execution: ShoesTransformExecution
   askShouldPostfill?: (exportResult: ShoesTransformResult) => Promise<boolean>
   listTemplates?: typeof listTeamShoesTemplates
   chooseTemplateAction?: (templates: TeamShoesTemplateRecord[]) => Promise<ExistingOrCreate>
@@ -134,7 +132,6 @@ async function resolveTemplateSelection(options: {
 export async function runShoesTransformerWithTeamContent(
   options: RunShoesTransformerWithTeamContentOptions,
 ): Promise<ShoesTransformerWithTeamContentResult> {
-  const runExecution = options.runExecution ?? runShoesTransformExecution
   const askShouldPostfill = options.askShouldPostfill ?? (async () => missingPromptAdapter("askShouldPostfill"))
   const listTemplates = options.listTemplates ?? listTeamShoesTemplates
   const chooseTemplateAction = options.chooseTemplateAction ?? (async () => missingPromptAdapter("chooseTemplateAction"))
@@ -146,7 +143,7 @@ export async function runShoesTransformerWithTeamContent(
   const applyPostfillStep = options.applyPostfill ?? applyTeamContentPostfill
   const reconcileWarnings = options.reconcileWarnings ?? reconcilePostfillWarnings
 
-  const execution: ShoesTransformExecution = await runExecution(options.input)
+  const execution = options.execution
   const exportResult = toShoesTransformResult(execution)
 
   if (exportResult.status === "error") {

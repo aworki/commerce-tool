@@ -14,7 +14,9 @@ Add a team-scoped content-template system for shoe exports so the workflow can o
 
 Each team stores four text templates plus a human-entered team description. Templates may include the `{{title}}` placeholder, which is replaced with the exported product title at write time.
 
-The existing Bun/CLI `shoes-transformer` paths remain non-interactive and continue returning one JSON result. A new interactive wrapper skill will run the same export logic, then optionally prompt the user to apply team content in the same execution.
+The existing Bun/CLI `shoes-transformer` paths remain the single non-interactive workbook-export abstraction and continue returning one JSON result. `shoes-transformer-with-team-content` is not a second export system; it is an interactive postfill wrapper that composes the base export, then optionally prompts the user to apply team content in the same execution.
+
+The base export also assumes `catalog_items.images_json` already contains canonical OSS public URLs from `catalog-ingestion`. Team-content postfill must not introduce its own image handling or alternate export path.
 
 ## Goals
 
