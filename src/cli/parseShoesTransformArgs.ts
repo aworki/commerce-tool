@@ -1,6 +1,10 @@
 import type { ShoesTransformInput } from "../skills/shoesTransformer/types.ts"
 
-export const SHOES_TRANSFORM_USAGE = "Usage: bun run transform:shoes (--source-id <id> | --source-url <url> | --id <catalog-item-id> | --category-id <id> | --category-url <url>) ... --output <output.xlsx> [--template <template.xlsx>]"
+export function formatShoesTransformUsage(command: string): string {
+  return `Usage: ${command} (--source-id <id> | --source-url <url> | --id <catalog-item-id> | --category-id <id> | --category-url <url>) ... --output <output.xlsx> [--template <template.xlsx>] [--tags <tag1,tag2,tag3>]`
+}
+
+export const SHOES_TRANSFORM_USAGE = formatShoesTransformUsage("bun run transform:shoes")
 
 export function parseShoesTransformArgs(argv: string[]): ShoesTransformInput {
   const input: ShoesTransformInput = {

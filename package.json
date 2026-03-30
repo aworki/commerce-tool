@@ -10,6 +10,7 @@
     "transform:shoes": "bun run src/cli/transformShoes.ts",
     "workflow:shoes-category-export": "bun run src/cli/crawlAndExportShoesCategory.ts",
     "skill:shoes-transformer": "bun run src/cli/shoesTransformerSkill.ts",
+    "skill:shoes-transformer-with-team-content": "bun run src/cli/shoesTransformerWithTeamContentSkill.ts",
     "test": "bun test",
     "test:bootstrap": "bun test src/bootstrap"
   },

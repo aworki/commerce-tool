@@ -15,6 +15,10 @@ Use selectors that already exist in the local database:
 - `--id <catalog-item-id>`
 - `--source-id <yupoo-album-id>`
 - `--source-url <yupoo-album-url>`
+- `--category-id <category-id>`
+- `--category-url <category-url>`
+
+Use `shoes-transformer-with-team-content` instead when the user wants an interactive postfill step for 商品描述 / 关键信息 / SEO标题 / SEO描述 after export.
 
 Required:
 - `--output <output.xlsx>`
