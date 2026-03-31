@@ -16,6 +16,15 @@ describe("getDatabaseUrl", () => {
     )
   })
 
+  test("throws when deployment mode requires DATABASE_URL but it is blank", () => {
+    expect(() => getDatabaseUrl({
+      GSTACK_REQUIRE_DATABASE_URL: "1",
+      DATABASE_URL: "   ",
+    } as NodeJS.ProcessEnv)).toThrow(
+      "DATABASE_URL is required when GSTACK_REQUIRE_DATABASE_URL=1",
+    )
+  })
+
   test("keeps the current localhost fallback for non-deployment environments", () => {
     expect(getDatabaseUrl({} as NodeJS.ProcessEnv)).toBe(
       "postgres://bytedance@localhost:5432/gstack_web2skill",
