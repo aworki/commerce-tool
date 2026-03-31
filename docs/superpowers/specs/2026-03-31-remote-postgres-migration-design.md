@@ -34,6 +34,9 @@ Current repository behavior already assumes PostgreSQL:
 - Database access uses `pg` (`package.json`).
 - The app reads `process.env.DATABASE_URL` first, then falls back to a local default (`src/db/client.ts`).
 - The local default points to `postgres://bytedance@localhost:5432/gstack_web2skill` (`src/db/client.ts`).
+- The current source-of-truth before migration is the PostgreSQL instance on the current machine's local `5432` port.
+- Only one application machine is running today: the current machine. Multi-machine access begins only after migration to the remote database.
+- The rollback target is that same current-machine local PostgreSQL instance, kept intact until the remote cutover is validated.
 - Schema creation is handled in code by `ensureCatalogSchema()` (`src/db/schema.ts`).
 - Current tables include at least:
   - `catalog_items` (`src/db/schema.ts`)
@@ -51,6 +54,7 @@ Use a self-managed remote PostgreSQL 16 instance with:
 - one application database: `gstack_web2skill`
 - one dedicated application user, e.g. `app_user`
 - one shared remote connection string used by all business machines
+- remote PostgreSQL exposed on port `5432`
 - one full logical export/import migration
 - one short maintenance window for final cutover
 
@@ -87,18 +91,36 @@ Local PostgreSQL
 - application role: `app_user` (or equivalent dedicated business role)
 - admin/superuser: reserved for manual administration only
 
+### Runtime privilege model
+
+The current app path calls `ensureCatalogSchema()` and may execute `CREATE TABLE IF NOT EXISTS` during normal startup/use. To avoid runtime failures immediately after migration, the remote privilege model must be explicit:
+
+- before application traffic switches, an admin account creates the target database and validates the expected schema exists
+- during the initial migration phase, `app_user` keeps the privileges required by the current code path, including the ability to create tables in the target schema if `ensureCatalogSchema()` runs
+- `app_user` must still remain non-superuser, non-createdb, and non-createrole
+- once the application code no longer relies on runtime schema creation, privileges can be reduced in a later hardening change
+
+This spec chooses compatibility with the current repository behavior over aggressive privilege reduction during the migration itself.
+
 ### Connection contract
 
 All business machines should use an explicit remote connection string such as:
 
 ```bash
-DATABASE_URL=postgresql://app_user:strong_password@<REMOTE_IP>:5432/gstack_web2skill
+DATABASE_URL=postgresql://app_user:strong_password@<REMOTE_IP>:5432/gstack_web2skill?sslmode=require
 ```
+
+TLS contract for this migration scope:
+
+- all runtime client connections must be encrypted with PostgreSQL TLS
+- the concrete client setting is `sslmode=require`
+- this migration does not require separate client certificate validation settings such as `sslrootcert` or `sslmode=verify-full`
+- rollback connectivity uses the same TLS contract if the rollback host is exposed across the network
 
 Requirements:
 
 - all business machines use the same host, port, database name, and application user
-- the production/runtime environment must provide `DATABASE_URL` explicitly
+- every runtime machine must provide `DATABASE_URL` explicitly; local fallback must not be relied on in deployment
 - the remote host becomes the only write target after cutover
 
 ## Network and Security Design
@@ -112,6 +134,8 @@ Requirements:
 - the database must not be open to arbitrary internet sources
 - `pg_hba.conf` allows only the intended business-machine IPs or CIDR ranges
 - password authentication should use `scram-sha-256`
+- all business-machine connections to the remote database must use TLS
+- the final runtime connection contract should include `sslmode=require`
 - the application role must not have superuser, createdb, or createrole privileges
 
 Minimum PostgreSQL configuration expectations:
@@ -119,6 +143,10 @@ Minimum PostgreSQL configuration expectations:
 - `listen_addresses = '*'` when network exposure is required
 - explicit host-based access rules in `pg_hba.conf`
 - strong password for the application role
+- server-side TLS configured for PostgreSQL client connections
+- client rollout uses `sslmode=require` consistently on all business machines
+
+TLS is mandatory for this migration. If TLS cannot be enabled on the self-managed PostgreSQL host, this design cannot proceed.
 
 ## Application-Side Design
 
@@ -204,17 +232,36 @@ Even if a rehearsal migration has already been completed, local data may keep ch
 - the cutover window is write-stopped, not live-migrated
 - all business machines must switch together
 - partial rollout is not allowed if it creates mixed local/remote writes
+- business traffic stays paused until post-cutover validation passes or rollback is triggered
+- the pre-cutover source of truth and rollback target is the current machine's local PostgreSQL instance on port `5432`
 
 ### Rollback rules
 
+Current-state assumption for rollback:
+
+- before migration, only the current machine runs the application
+- the current machine's local PostgreSQL on port `5432` is the only pre-cutover database
+- after migration, multiple business machines may connect to the remote database, but rollback still targets the current machine's original PostgreSQL instance
+
+Pre-cutover rollback readiness requirement:
+
+- before any business machine switches to the remote database, the current machine's PostgreSQL instance must be made remotely reachable through an explicit rollback host/IP and port
+- that rollback exposure must be temporary and restricted to the same business-machine source IP allowlist used for the remote database
+- the rollback connection must use an explicit `DATABASE_URL`; it must never rely on machine-local `localhost`
+- if the rollback host is exposed over the network, it follows the same TLS client contract as the remote database: PostgreSQL TLS with `sslmode=require`
+- if this temporary rollback exposure cannot be prepared, the cutover must not begin
+
 If post-cutover validation fails:
 
-1. point all business machines back to the original local `DATABASE_URL`
-2. restart the application
-3. resume traffic on the local database
-4. investigate and fix the remote issue before a new migration window
+1. point every switched business machine to the prepared rollback host/IP for the current machine's preserved PostgreSQL instance instead of the new remote database
+2. use the pre-distributed explicit rollback `DATABASE_URL`
+3. restart the application
+4. resume traffic on the preserved local database
+5. investigate and fix the remote issue before a new migration window
 
-Rollback depends on keeping the local PostgreSQL instance intact until the remote cutover has been validated.
+Rollback depends on keeping the current machine's local PostgreSQL instance intact and remotely reachable until the remote cutover has been validated.
+
+The implementation plan must define the exact rollback host/IP value, port, access-control changes, and explicit rollback connection string before cutover starts.
 
 ## Validation Requirements
 
