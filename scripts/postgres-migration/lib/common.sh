@@ -6,14 +6,14 @@ require_env() {
 
 assert_postgres_url_has_sslmode_require() {
   case "$1" in
-    *"sslmode=require"*) ;;
+    *[\?\&]sslmode=require|*[\?\&]sslmode=require\&*) ;;
     *) die "$2 must include sslmode=require" ;;
   esac
 }
 
 assert_database_url_uses_explicit_host() {
   case "$1" in
-    *"@localhost:"*|*"@127.0.0.1:"*) die "$2 must use a non-localhost network host" ;;
+    *"@localhost:"*|*"@127.0.0.1:"*|*@\[::1\]:*) die "$2 must use a non-localhost network host" ;;
   esac
 }
 
