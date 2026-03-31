@@ -12,7 +12,11 @@
     "skill:shoes-transformer": "bun run src/cli/shoesTransformerSkill.ts",
     "skill:shoes-transformer-with-team-content": "bun run src/cli/shoesTransformerWithTeamContentSkill.ts",
     "test": "bun test",
-    "test:bootstrap": "bun test src/bootstrap"
+    "test:bootstrap": "bun test src/bootstrap",
+    "db:migration:export-local": "bash scripts/postgres-migration/export-local.sh",
+    "db:migration:import-remote": "bash scripts/postgres-migration/import-remote.sh",
+    "db:migration:verify-cutover": "bash scripts/postgres-migration/verify-cutover.sh",
+    "db:migration:prepare-rollback": "bash scripts/postgres-migration/prepare-rollback.sh"
   },
   "dependencies": {
     "ali-oss": "^6.22.0",
