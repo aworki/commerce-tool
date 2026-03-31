@@ -6,6 +6,7 @@ source "$(cd "$(dirname "$0")" && pwd)/lib/common.sh"
 require_env SOURCE_DATABASE_URL
 require_env TARGET_DATABASE_URL
 assert_postgres_url_has_sslmode_require "$TARGET_DATABASE_URL" TARGET_DATABASE_URL
+assert_database_url_uses_explicit_host "$TARGET_DATABASE_URL" TARGET_DATABASE_URL
 
 for table in catalog_items team_shoes_content_templates; do
   source_count="$(psql "$SOURCE_DATABASE_URL" -Atqc "$(build_table_count_sql "$table")")"
