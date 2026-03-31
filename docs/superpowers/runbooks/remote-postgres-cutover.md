@@ -15,10 +15,10 @@
   - `ROLLBACK_DATABASE_URL='postgresql://<rollback_user>:<rollback_password>@ROLLBACK_HOST:5432/gstack_web2skill?sslmode=require'`
 
 ## Remote host preparation
-1. Install PostgreSQL 16 on the remote host.
+1. Install PostgreSQL 16 on the remote host and initialize the PostgreSQL cluster.
 2. Enable server-side PostgreSQL TLS before any remote connection attempt.
 3. Create database `gstack_web2skill`.
-4. Create application user `app_user`.
+4. Create application user `app_user`, and set and verify a strong password for it.
 5. Grant runtime-compatible privileges to `app_user`, including the current schema-creation needs from `ensureCatalogSchema()`, while keeping the role non-superuser, non-createdb, and non-createrole.
 6. Configure `listen_addresses`, `pg_hba.conf`, and firewall rules for the business-machine IP allowlist.
 7. Use `hostssl` + `scram-sha-256` for the application connection policy.
