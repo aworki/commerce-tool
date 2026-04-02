@@ -1,0 +1,28 @@
+{
+  "name": "gstack-web2skill",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ingest:album": "bun run src/cli/ingestAlbum.ts",
+    "inspect:category": "bun run src/cli/inspectCategory.ts",
+    "ingest:category": "bun run src/cli/ingestCategory.ts",
+    "skill:catalog": "bun run src/cli/catalogSkill.ts",
+    "transform:shoes": "bun run src/cli/transformShoes.ts",
+    "workflow:shoes-category-export": "bun run src/cli/crawlAndExportShoesCategory.ts",
+    "skill:shoes-transformer": "bun run src/cli/shoesTransformerSkill.ts",
+    "skill:shoes-transformer-with-team-content": "bun run src/cli/shoesTransformerWithTeamContentSkill.ts",
+    "test": "bun test",
+    "test:bootstrap": "bun test src/bootstrap",
+    "db:migration:export-local": "bash scripts/postgres-migration/export-local.sh",
+    "db:migration:import-remote": "bash scripts/postgres-migration/import-remote.sh",
+    "db:migration:verify-cutover": "bash scripts/postgres-migration/verify-cutover.sh",
+    "db:migration:prepare-rollback": "bash scripts/postgres-migration/prepare-rollback.sh",
+    "db:migration:generate-server-tls": "bash scripts/postgres-migration/generate-server-tls.sh",
+    "db:migration:verify-server-tls": "bash scripts/postgres-migration/verify-server-tls.sh"
+  },
+  "dependencies": {
+    "ali-oss": "^6.22.0",
+    "exceljs": "^4.4.0",
+    "pg": "^8.20.0"
+  }
+}
