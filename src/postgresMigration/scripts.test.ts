@@ -5,9 +5,10 @@ import { join } from "node:path"
 import { runShell } from "../bootstrap/testUtils"
 
 const localDatabaseUrl = "postgresql://local_user:secret@192.168.1.10:5432/gstack_web2skill"
-const remoteDatabaseUrl = "postgresql://app_user:secret@10.0.0.8:5432/gstack_web2skill?sslmode=require"
+const remoteDatabaseUrl = "postgresql://app_user:secret@10.0.0.8:5432/gstack_web2skill?sslmode=verify-full"
 const sourceDatabaseUrl = "postgresql://source_user:secret@10.0.0.7:5432/gstack_web2skill"
-const rollbackDatabaseUrl = "postgresql://alice:secret@10.0.0.9:5432/gstack_web2skill?sslmode=require"
+const rollbackDatabaseUrl = "postgresql://alice:secret@10.0.0.9:5432/gstack_web2skill?sslmode=verify-full"
+const caCertPath = "/tmp/gstack-pg-tls/internal-ca.pem"
 
 let stubDir = ""
 let stubLogFile = ""
@@ -16,6 +17,7 @@ beforeEach(async () => {
   stubDir = await mkdtemp(join(tmpdir(), "postgres-migration-stubs-"))
   stubLogFile = join(stubDir, "command-log.jsonl")
   await writeFile(stubLogFile, "")
+  await writeFile(join(stubDir, "internal-ca.pem"), "CERT")
 })
 
 afterEach(async () => {
@@ -91,17 +93,32 @@ describe("postgres migration scripts", () => {
     ])
   })
 
-  test("import-remote rejects a target url without sslmode=require", async () => {
+  test("import-remote rejects a target url without sslmode=verify-full", async () => {
     const result = await runShell(
       "bash scripts/postgres-migration/import-remote.sh",
       {
         DUMP_FILE: "dump/custom.dump",
         REMOTE_DATABASE_URL: "postgresql://app_user:secret@10.0.0.8:5432/gstack_web2skill",
+        DATABASE_SSL_CA_CERT_PATH: join(stubDir, "internal-ca.pem"),
       },
     )
 
     expect(result.exitCode).toBe(1)
-    expect(result.stderr).toContain("REMOTE_DATABASE_URL must include sslmode=require")
+    expect(result.stderr).toContain("REMOTE_DATABASE_URL must include sslmode=verify-full")
+  })
+
+  test("import-remote rejects a missing CA file path before invoking pg_restore", async () => {
+    const result = await runShell(
+      "bash scripts/postgres-migration/import-remote.sh",
+      {
+        DUMP_FILE: "dump/custom.dump",
+        REMOTE_DATABASE_URL: remoteDatabaseUrl,
+        DATABASE_SSL_CA_CERT_PATH: "",
+      },
+    )
+
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toContain("Missing required environment variable: DATABASE_SSL_CA_CERT_PATH")
   })
 
   test("import-remote rejects a localhost target url before invoking pg_restore", async () => {
@@ -111,7 +128,8 @@ describe("postgres migration scripts", () => {
       "bash scripts/postgres-migration/import-remote.sh",
       withStubbedPath({
         DUMP_FILE: "dump/custom.dump",
-        REMOTE_DATABASE_URL: "postgresql://app_user:secret@localhost:5432/gstack_web2skill?sslmode=require",
+        REMOTE_DATABASE_URL: "postgresql://app_user:secret@localhost:5432/gstack_web2skill?sslmode=verify-full",
+        DATABASE_SSL_CA_CERT_PATH: join(stubDir, "internal-ca.pem"),
       }),
     )
 
@@ -121,17 +139,19 @@ describe("postgres migration scripts", () => {
   })
 
   test("import-remote invokes pg_restore with the restore contract flags", async () => {
-    await installStub("pg_restore")
+    await installStub("pg_restore", 'printf "PGSSLROOTCERT=%s\\n" "$PGSSLROOTCERT"')
 
     const result = await runShell(
       "bash scripts/postgres-migration/import-remote.sh",
       withStubbedPath({
         DUMP_FILE: "dump/custom restore.dump",
         REMOTE_DATABASE_URL: remoteDatabaseUrl,
+        DATABASE_SSL_CA_CERT_PATH: join(stubDir, "internal-ca.pem"),
       }),
     )
 
     expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain(`PGSSLROOTCERT=${join(stubDir, "internal-ca.pem")}`)
     expect(await readStubLog()).toEqual([
       [
         "pg_restore",
@@ -146,17 +166,32 @@ describe("postgres migration scripts", () => {
     ])
   })
 
-  test("verify-cutover rejects a target url without sslmode=require", async () => {
+  test("verify-cutover rejects a target url without sslmode=verify-full", async () => {
     const result = await runShell(
       "bash scripts/postgres-migration/verify-cutover.sh",
       {
         SOURCE_DATABASE_URL: "postgres://bytedance@localhost:5432/gstack_web2skill",
         TARGET_DATABASE_URL: "postgresql://app_user:secret@10.0.0.8:5432/gstack_web2skill",
+        DATABASE_SSL_CA_CERT_PATH: join(stubDir, "internal-ca.pem"),
       },
     )
 
     expect(result.exitCode).toBe(1)
-    expect(result.stderr).toContain("TARGET_DATABASE_URL must include sslmode=require")
+    expect(result.stderr).toContain("TARGET_DATABASE_URL must include sslmode=verify-full")
+  })
+
+  test("verify-cutover rejects a missing CA file path before invoking psql", async () => {
+    const result = await runShell(
+      "bash scripts/postgres-migration/verify-cutover.sh",
+      {
+        SOURCE_DATABASE_URL: sourceDatabaseUrl,
+        TARGET_DATABASE_URL: remoteDatabaseUrl,
+        DATABASE_SSL_CA_CERT_PATH: "",
+      },
+    )
+
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toContain("Missing required environment variable: DATABASE_SSL_CA_CERT_PATH")
   })
 
   test("verify-cutover rejects a localhost target url before invoking psql", async () => {
@@ -166,7 +201,8 @@ describe("postgres migration scripts", () => {
       "bash scripts/postgres-migration/verify-cutover.sh",
       withStubbedPath({
         SOURCE_DATABASE_URL: sourceDatabaseUrl,
-        TARGET_DATABASE_URL: "postgresql://app_user:secret@127.0.0.1:5432/gstack_web2skill?sslmode=require",
+        TARGET_DATABASE_URL: "postgresql://app_user:secret@127.0.0.1:5432/gstack_web2skill?sslmode=verify-full",
+        DATABASE_SSL_CA_CERT_PATH: join(stubDir, "internal-ca.pem"),
       }),
     )
 
@@ -202,6 +238,7 @@ esac
       withStubbedPath({
         SOURCE_DATABASE_URL: sourceDatabaseUrl,
         TARGET_DATABASE_URL: remoteDatabaseUrl,
+        DATABASE_SSL_CA_CERT_PATH: join(stubDir, "internal-ca.pem"),
       }),
     )
 
@@ -218,11 +255,27 @@ esac
   test("prepare-rollback rejects a localhost rollback url", async () => {
     const result = await runShell(
       "bash scripts/postgres-migration/prepare-rollback.sh",
-      { ROLLBACK_DATABASE_URL: "postgresql://alice:secret@localhost:5432/gstack_web2skill?sslmode=require" },
+      {
+        ROLLBACK_DATABASE_URL: "postgresql://alice:secret@localhost:5432/gstack_web2skill?sslmode=verify-full",
+        DATABASE_SSL_CA_CERT_PATH: join(stubDir, "internal-ca.pem"),
+      },
     )
 
     expect(result.exitCode).toBe(1)
     expect(result.stderr).toContain("ROLLBACK_DATABASE_URL must use a non-localhost network host")
+  })
+
+  test("prepare-rollback requires a CA file path", async () => {
+    const result = await runShell(
+      "bash scripts/postgres-migration/prepare-rollback.sh",
+      {
+        ROLLBACK_DATABASE_URL: rollbackDatabaseUrl,
+        DATABASE_SSL_CA_CERT_PATH: "",
+      },
+    )
+
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toContain("Missing required environment variable: DATABASE_SSL_CA_CERT_PATH")
   })
 
   test("prepare-rollback prints the rollback url after the connectivity probe succeeds", async () => {
@@ -238,12 +291,35 @@ esac
 
     const result = await runShell(
       "bash scripts/postgres-migration/prepare-rollback.sh",
-      withStubbedPath({ ROLLBACK_DATABASE_URL: rollbackDatabaseUrl }),
+      withStubbedPath({
+        ROLLBACK_DATABASE_URL: rollbackDatabaseUrl,
+        DATABASE_SSL_CA_CERT_PATH: join(stubDir, "internal-ca.pem"),
+      }),
     )
 
     expect(result.exitCode).toBe(0)
     expect(result.stdout.trim()).toBe(rollbackDatabaseUrl)
     expect(await readStubLog()).toEqual([["psql", rollbackDatabaseUrl, "-c", "select 1"]])
+  })
+
+  test("generate-server-tls requires OUTPUT_DIR and POSTGRES_SERVER_IP", async () => {
+    const result = await runShell("bash scripts/postgres-migration/generate-server-tls.sh")
+
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toContain("Missing required environment variable: OUTPUT_DIR")
+  })
+
+  test("verify-server-tls requires DATABASE_SSL_CA_CERT_PATH", async () => {
+    const result = await runShell(
+      "bash scripts/postgres-migration/verify-server-tls.sh",
+      {
+        POSTGRES_SERVER_IP: "101.47.12.162",
+        DATABASE_SSL_CA_CERT_PATH: "",
+      },
+    )
+
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toContain("Missing required environment variable: DATABASE_SSL_CA_CERT_PATH")
   })
 
   test("package.json exposes the migration entrypoints", async () => {
@@ -252,5 +328,7 @@ esac
     expect(pkg.default.scripts["db:migration:import-remote"]).toBe("bash scripts/postgres-migration/import-remote.sh")
     expect(pkg.default.scripts["db:migration:verify-cutover"]).toBe("bash scripts/postgres-migration/verify-cutover.sh")
     expect(pkg.default.scripts["db:migration:prepare-rollback"]).toBe("bash scripts/postgres-migration/prepare-rollback.sh")
+    expect(pkg.default.scripts["db:migration:generate-server-tls"]).toBe("bash scripts/postgres-migration/generate-server-tls.sh")
+    expect(pkg.default.scripts["db:migration:verify-server-tls"]).toBe("bash scripts/postgres-migration/verify-server-tls.sh")
   })
 })

@@ -4,10 +4,14 @@ require_env() {
   [[ -n "${!1:-}" ]] || die "Missing required environment variable: $1"
 }
 
-assert_postgres_url_has_sslmode_require() {
+require_readable_file() {
+  [[ -r "$2" ]] || die "$1 must point to a readable file: $2"
+}
+
+assert_postgres_url_has_sslmode_verify_full() {
   case "$1" in
-    *[\?\&]sslmode=require|*[\?\&]sslmode=require\&*) ;;
-    *) die "$2 must include sslmode=require" ;;
+    *[\?\&]sslmode=verify-full|*[\?\&]sslmode=verify-full\&*) ;;
+    *) die "$2 must include sslmode=verify-full" ;;
   esac
 }
 

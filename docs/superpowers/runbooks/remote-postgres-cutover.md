@@ -2,17 +2,24 @@
 
 ## Preconditions
 - Remote PostgreSQL is PostgreSQL 16 and will listen on port `5432`.
-- The shared remote runtime URL uses TLS and includes `sslmode=require`.
+- The shared remote runtime URL uses TLS and includes `sslmode=verify-full`.
 - Every deployed machine that will use the remote database has `GSTACK_REQUIRE_DATABASE_URL=1` set.
 - The pre-cutover source of truth is the current machine's local PostgreSQL instance on port `5432`: `postgres://bytedance@localhost:5432/gstack_web2skill`.
 - The rollback target is that same current-machine PostgreSQL instance, kept intact until remote cutover validation passes.
 - A dump directory exists before any export command runs: `mkdir -p tmp`.
 - Fill in these placeholders before the window starts:
-  - `REMOTE_IP=<remote-postgres-ip>`
+  - `REMOTE_IP=101.47.12.162`
   - `BUSINESS_MACHINE_IPS=<comma-separated source IPs or CIDRs allowed to connect>`
-  - `REMOTE_DATABASE_URL='postgresql://app_user:<password>@REMOTE_IP:5432/gstack_web2skill?sslmode=require'`
+  - `DATABASE_SSL_CA_CERT_PATH=/tmp/gstack-pg-tls/internal-ca.pem`
+  - `REMOTE_DATABASE_URL='postgresql://app_user:<password>@101.47.12.162:5432/gstack_web2skill?sslmode=verify-full'`
   - `ROLLBACK_HOST=<current-machine-routable-ip>`
-  - `ROLLBACK_DATABASE_URL='postgresql://<rollback_user>:<rollback_password>@ROLLBACK_HOST:5432/gstack_web2skill?sslmode=require'`
+  - `ROLLBACK_DATABASE_URL='postgresql://<rollback_user>:<rollback_password>@ROLLBACK_HOST:5432/gstack_web2skill?sslmode=verify-full'`
+  - Generate the CA and server certificate bundle on the current machine before touching the remote host:
+    ```bash
+    OUTPUT_DIR=/tmp/gstack-pg-tls POSTGRES_SERVER_IP="$REMOTE_IP" bun run db:migration:generate-server-tls
+    ```
+    This writes `internal-ca.pem`, `server.crt`, and `server.key` into `/tmp/gstack-pg-tls`.
+  - Keep `/tmp/gstack-pg-tls/internal-ca.pem` on every machine that will connect to the remote database.
 
 ## Remote host preparation
 1. Install PostgreSQL 16 on the remote host and initialize the PostgreSQL cluster.
@@ -23,9 +30,13 @@
 6. Configure `listen_addresses`, `pg_hba.conf`, and firewall rules for the business-machine IP allowlist.
 7. Use `hostssl` + `scram-sha-256` for the application connection policy.
 8. Verify connectivity from every business machine to `REMOTE_IP:5432` before rehearsal starts.
-9. Verify at least one TLS-backed `psql` connection succeeds with the final remote `DATABASE_URL` before rehearsal starts:
+9. Verify the remote PostgreSQL server presents the CA-signed certificate with the expected IP SAN before rehearsal starts:
    ```bash
-   psql "$REMOTE_DATABASE_URL" -c 'select version()'
+   POSTGRES_SERVER_IP="$REMOTE_IP" DATABASE_SSL_CA_CERT_PATH="$DATABASE_SSL_CA_CERT_PATH" bun run db:migration:verify-server-tls
+   ```
+10. Verify at least one TLS-backed `psql` connection succeeds with the final remote `DATABASE_URL` before rehearsal starts:
+   ```bash
+   PGSSLROOTCERT="$DATABASE_SSL_CA_CERT_PATH" psql "$REMOTE_DATABASE_URL" -c 'select version()'
    ```
 
 ## Source inspection
@@ -50,11 +61,11 @@
    ```
 3. Import into the remote database with the package script:
    ```bash
-   REMOTE_DATABASE_URL="$REMOTE_DATABASE_URL" DUMP_FILE=tmp/local.dump bun run db:migration:import-remote
+   REMOTE_DATABASE_URL="$REMOTE_DATABASE_URL" DATABASE_SSL_CA_CERT_PATH="$DATABASE_SSL_CA_CERT_PATH" DUMP_FILE=tmp/local.dump bun run db:migration:import-remote
    ```
 4. Compare the required key table counts with the package script:
    ```bash
-   SOURCE_DATABASE_URL='postgres://bytedance@localhost:5432/gstack_web2skill' TARGET_DATABASE_URL="$REMOTE_DATABASE_URL" bun run db:migration:verify-cutover
+   SOURCE_DATABASE_URL='postgres://bytedance@localhost:5432/gstack_web2skill' TARGET_DATABASE_URL="$REMOTE_DATABASE_URL" DATABASE_SSL_CA_CERT_PATH="$DATABASE_SSL_CA_CERT_PATH" bun run db:migration:verify-cutover
    ```
 5. Run one controlled application start or smoke test against the remote `DATABASE_URL` before the real cutover window. Keep the test limited to startup plus one read and one write path, and set `GSTACK_REQUIRE_DATABASE_URL=1` so no deployed machine can fall back to localhost during the rehearsal.
 
@@ -64,10 +75,10 @@
    - `ROLLBACK_PORT=5432`
 2. Temporarily make that PostgreSQL instance remotely reachable on `ROLLBACK_HOST:5432`.
 3. Restrict inbound access to the same business-machine source IP allowlist used for the remote database.
-4. Require TLS for any rollback traffic that crosses the network; the rollback URL must include `sslmode=require`.
+4. Require TLS for any rollback traffic that crosses the network; the rollback URL must include `sslmode=verify-full` and every rollback client must have the CA file at `DATABASE_SSL_CA_CERT_PATH`.
 5. Prepare and validate the explicit rollback connection string with the package script:
    ```bash
-   ROLLBACK_DATABASE_URL="$ROLLBACK_DATABASE_URL" bun run db:migration:prepare-rollback
+   ROLLBACK_DATABASE_URL="$ROLLBACK_DATABASE_URL" DATABASE_SSL_CA_CERT_PATH="$DATABASE_SSL_CA_CERT_PATH" bun run db:migration:prepare-rollback
    ```
 6. Confirm the rollback URL can be reached from each business machine that will switch during cutover.
 7. Record and distribute that exact rollback `DATABASE_URL` to every machine that will switch during cutover.
@@ -82,13 +93,13 @@
    ```
 4. Re-run the remote import:
    ```bash
-   REMOTE_DATABASE_URL="$REMOTE_DATABASE_URL" DUMP_FILE=tmp/local.dump bun run db:migration:import-remote
+   REMOTE_DATABASE_URL="$REMOTE_DATABASE_URL" DATABASE_SSL_CA_CERT_PATH="$DATABASE_SSL_CA_CERT_PATH" DUMP_FILE=tmp/local.dump bun run db:migration:import-remote
    ```
 5. Switch every business machine to the same remote `DATABASE_URL` and keep `GSTACK_REQUIRE_DATABASE_URL=1` set.
 6. Restart the application on every switched machine.
 7. Run post-cutover row-count verification:
    ```bash
-   SOURCE_DATABASE_URL='postgres://bytedance@localhost:5432/gstack_web2skill' TARGET_DATABASE_URL="$REMOTE_DATABASE_URL" bun run db:migration:verify-cutover
+   SOURCE_DATABASE_URL='postgres://bytedance@localhost:5432/gstack_web2skill' TARGET_DATABASE_URL="$REMOTE_DATABASE_URL" DATABASE_SSL_CA_CERT_PATH="$DATABASE_SSL_CA_CERT_PATH" bun run db:migration:verify-cutover
    ```
 8. Validate the application on the remote database:
    - the application starts without database connection errors
