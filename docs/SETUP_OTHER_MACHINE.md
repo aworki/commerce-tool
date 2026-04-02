@@ -23,7 +23,7 @@ Make sure the target machine has:
 - Bun
 - access to this repository
 - the remote PostgreSQL password for `app_user`
-- a copy of the CA certificate file used to trust the remote PostgreSQL server
+- access to the repository's tracked CA certificate at `ca/internal-ca.pem`
 
 ## 1. Clone the repository
 
@@ -33,21 +33,17 @@ cd commerce-tool
 bun install
 ```
 
-## 2. Install the PostgreSQL CA certificate
+## 2. Use the repository CA certificate
 
-Create the TLS directory:
-
-```bash
-mkdir -p /tmp/gstack-pg-tls
-```
-
-Copy the CA certificate onto the machine at this exact path:
+After cloning the repository, the CA certificate is already available here:
 
 ```text
-/tmp/gstack-pg-tls/internal-ca.pem
+./ca/internal-ca.pem
 ```
 
-Do not rename it unless you also update `.env`.
+Do not commit any of the other generated files that may sit beside it in `ca/`, especially private keys.
+
+Only `ca/internal-ca.pem` is safe to share across machines.
 
 ## 3. Create the local `.env`
 
@@ -56,7 +52,7 @@ Create a `.env` file in the repository root with:
 ```env
 DATABASE_URL=postgresql://app_user:<password>@101.47.12.162:5432/gstack_web2skill?sslmode=verify-full
 REMOTE_DATABASE_URL=postgresql://app_user:<password>@101.47.12.162:5432/gstack_web2skill?sslmode=verify-full
-DATABASE_SSL_CA_CERT_PATH=/tmp/gstack-pg-tls/internal-ca.pem
+DATABASE_SSL_CA_CERT_PATH=./ca/internal-ca.pem
 GSTACK_REQUIRE_DATABASE_URL=1
 ```
 
@@ -83,7 +79,7 @@ Expected result:
 Run:
 
 ```bash
-POSTGRES_SERVER_IP=101.47.12.162 DATABASE_SSL_CA_CERT_PATH=/tmp/gstack-pg-tls/internal-ca.pem bash scripts/postgres-migration/verify-server-tls.sh
+POSTGRES_SERVER_IP=101.47.12.162 DATABASE_SSL_CA_CERT_PATH=./ca/internal-ca.pem bash scripts/postgres-migration/verify-server-tls.sh
 ```
 
 Expected result:
@@ -113,17 +109,17 @@ In this repository, set up and verify the shared remote PostgreSQL connection fo
 
 Requirements:
 - Use .env from the repo root
-- Use /tmp/gstack-pg-tls/internal-ca.pem as the CA file
+- Use ./ca/internal-ca.pem as the CA file
 - Use sslmode=verify-full
 - Do not commit .env or any secret material
 - Do not change business logic unless verification proves something is broken
 
 Run these steps in order:
-1. Check that /tmp/gstack-pg-tls/internal-ca.pem exists
+1. Check that ./ca/internal-ca.pem exists
 2. Run:
    bun test src/db/client.test.ts src/db/tls.test.ts src/postgresMigration/common.test.ts src/postgresMigration/scripts.test.ts
 3. Run:
-   POSTGRES_SERVER_IP=101.47.12.162 DATABASE_SSL_CA_CERT_PATH=/tmp/gstack-pg-tls/internal-ca.pem bash scripts/postgres-migration/verify-server-tls.sh
+   POSTGRES_SERVER_IP=101.47.12.162 DATABASE_SSL_CA_CERT_PATH=./ca/internal-ca.pem bash scripts/postgres-migration/verify-server-tls.sh
 4. Run a real connection verification using buildDatabasePoolConfig() and print current_user and current_database
 5. Tell me clearly whether this machine is ready to use the shared remote PostgreSQL database
 ```
@@ -155,6 +151,9 @@ Safe to push:
 Do not push:
 
 - `.env`
-- private keys
-- `/tmp/gstack-pg-tls/*`
+- `ca/internal-ca.key`
+- `ca/server.key`
+- `ca/server.crt`
+- `ca/server.csr`
+- `ca/internal-ca.srl`
 - machine-local dump files
