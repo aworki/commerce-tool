@@ -10,16 +10,17 @@
 - Fill in these placeholders before the window starts:
   - `REMOTE_IP=101.47.12.162`
   - `BUSINESS_MACHINE_IPS=<comma-separated source IPs or CIDRs allowed to connect>`
-  - `DATABASE_SSL_CA_CERT_PATH=/tmp/gstack-pg-tls/internal-ca.pem`
+  - `DATABASE_SSL_CA_CERT_PATH=./ca/internal-ca.pem`
   - `REMOTE_DATABASE_URL='postgresql://app_user:<password>@101.47.12.162:5432/gstack_web2skill?sslmode=verify-full'`
   - `ROLLBACK_HOST=<current-machine-routable-ip>`
   - `ROLLBACK_DATABASE_URL='postgresql://<rollback_user>:<rollback_password>@ROLLBACK_HOST:5432/gstack_web2skill?sslmode=verify-full'`
   - Generate the CA and server certificate bundle on the current machine before touching the remote host:
     ```bash
-    OUTPUT_DIR=/tmp/gstack-pg-tls POSTGRES_SERVER_IP="$REMOTE_IP" bun run db:migration:generate-server-tls
+    OUTPUT_DIR=./ca POSTGRES_SERVER_IP="$REMOTE_IP" bun run db:migration:generate-server-tls
     ```
-    This writes `internal-ca.pem`, `server.crt`, and `server.key` into `/tmp/gstack-pg-tls`.
-  - Keep `/tmp/gstack-pg-tls/internal-ca.pem` on every machine that will connect to the remote database.
+    This writes `internal-ca.pem`, `server.crt`, and `server.key` into `./ca`.
+  - Commit only `ca/internal-ca.pem`. Do not commit the private keys or the server certificate files.
+  - Keep `./ca/internal-ca.pem` on every machine that will connect to the remote database.
 
 ## Remote host preparation
 1. Install PostgreSQL 16 on the remote host and initialize the PostgreSQL cluster.
