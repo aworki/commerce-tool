@@ -40,9 +40,14 @@ Database:
 postgres://bytedance@localhost:5432/gstack_web2skill
 ```
 
-Default template:
+Template to use in this repo:
 ```text
-/Users/bytedance/Desktop/商品导入模板(1).xlsx
+/Users/bytedance/Desktop/business/commerce-tool/商品导入模板.xlsx
+```
+
+Do not use:
+```text
+/Users/bytedance/Desktop/business/commerce-tool/模版.xlsx
 ```
 
 ## Required Project Entry Points

@@ -9,7 +9,7 @@ Valid request shapes:
 ```
 
 ```text
---id 1 --output /tmp/shoes-import.xlsx --template "/Users/bytedance/Desktop/商品导入模板(1).xlsx" --tags 鞋类,运动鞋,低帮鞋
+--id 1 --output /tmp/shoes-import.xlsx --template "/Users/bytedance/Desktop/business/commerce-tool/商品导入模板.xlsx" --tags 鞋类,运动鞋,低帮鞋
 ```
 
 ```text

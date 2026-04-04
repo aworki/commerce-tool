@@ -10,7 +10,7 @@ After setup, the other machine can:
 - verify the remote PostgreSQL TLS certificate
 - connect to the shared remote PostgreSQL database with strict TLS verification
 - run the repo's DB-related test suite before using the workflow
-- call the repo's shared skills from the target machine's global Claude skills directory
+- install every skill under the repo `skills/` directory into the current agent client's global User scope skills
 
 Repository:
 
@@ -22,7 +22,7 @@ Make sure the target machine has:
 
 - Git
 - Bun
-- Claude Code
+- an agent client that supports global User scope skills
 - access to this repository
 - the remote PostgreSQL password for `app_user`
 - access to the repository's tracked CA certificate at `ca/internal-ca.pem`
@@ -35,26 +35,31 @@ cd commerce-tool
 bun install
 ```
 
-## 2. Install the repo skills into Claude global skills
+## 2. Install the repo skills into the current agent client's global User scope skills
 
-The target machine should expose the repo's shared skills through Claude Code's global skills directory so they are callable from any session on that machine.
+The target machine should expose every skill under the repo `skills/` directory through the current agent client's global User scope skills so they are callable from any session on that machine.
 
-Currently, link these repo skills into `~/.claude/skills`:
+Set `AGENT_USER_SKILLS_DIR` to the current agent client's global User scope skills path, then link every directory under `./skills` into that location:
+
+```bash
+export AGENT_USER_SKILLS_DIR="<global-user-scope-skills-path>"
+mkdir -p "$AGENT_USER_SKILLS_DIR"
+for skill_dir in "$PWD"/skills/*; do
+  skill_name="$(basename "$skill_dir")"
+  ln -sfn "$skill_dir" "$AGENT_USER_SKILLS_DIR/$skill_name"
+done
+```
+
+This currently installs:
 
 - `catalog-ingestion`
+- `run`
 - `shoes-transformer`
 - `shoes-transformer-with-team-content`
 
-Run:
+Replace `<global-user-scope-skills-path>` with the actual global User scope skills path for the current agent client.
 
-```bash
-mkdir -p ~/.claude/skills
-ln -sfn "$PWD/skills/catalog-ingestion" ~/.claude/skills/catalog-ingestion
-ln -sfn "$PWD/skills/shoes-transformer" ~/.claude/skills/shoes-transformer
-ln -sfn "$PWD/skills/shoes-transformer-with-team-content" ~/.claude/skills/shoes-transformer-with-team-content
-```
-
-After linking them, start a new Claude Code session on that machine so the skills are loaded.
+After linking them, start a new agent session on that machine so the skills are loaded.
 
 ## 3. Use the repository CA certificate
 
@@ -134,25 +139,20 @@ Requirements:
 - Use .env from the repo root
 - Use ./ca/internal-ca.pem as the CA file
 - Use sslmode=verify-full
-- Ensure these repo skills are callable from Claude global skills via ~/.claude/skills:
-  - catalog-ingestion
-  - shoes-transformer
-  - shoes-transformer-with-team-content
+- Install every repo skill under ./skills into the current agent client's global User scope skills
+- Use the current agent client's actual global User scope skills path
 - Do not commit .env or any secret material
 - Do not change business logic unless verification proves something is broken
 
 Run these steps in order:
 1. Check that ./ca/internal-ca.pem exists
-2. Ensure ~/.claude/skills contains callable links for:
-   - catalog-ingestion
-   - shoes-transformer
-   - shoes-transformer-with-team-content
+2. Ensure every directory under ./skills is installed as a callable skill in the current agent client's global User scope skills
 3. Run:
    bun test src/db/client.test.ts src/db/tls.test.ts src/postgresMigration/common.test.ts src/postgresMigration/scripts.test.ts
 4. Run:
    POSTGRES_SERVER_IP=101.47.12.162 DATABASE_SSL_CA_CERT_PATH=./ca/internal-ca.pem bash scripts/postgres-migration/verify-server-tls.sh
 5. Run a real connection verification using buildDatabasePoolConfig() and print current_user and current_database
-6. Tell me clearly whether this machine is ready to use the shared remote PostgreSQL database and whether the shared skills are callable
+6. Tell me clearly whether this machine is ready to use the shared remote PostgreSQL database and whether every repo skill under ./skills is callable from the current agent client's global User scope skills
 ```
 
 ## 9. Common failure cases
@@ -171,7 +171,7 @@ That is not the final contract for this setup. Use `sslmode=verify-full`.
 
 ### skill not found
 
-Usually means the repo skill directory was not linked into `~/.claude/skills`, the link target is wrong, or Claude Code needs a fresh session to load newly added skills.
+Usually means one or more repo skill directories under `./skills` were not installed into the current agent client's actual global User scope skills path, the link target is wrong, or the agent client needs a fresh session to load newly added skills.
 
 ## 10. What should and should not go to GitHub
 
