@@ -7,3 +7,5 @@ data/
 .worktrees/
 ca/*
 !ca/internal-ca.pem
+
+env
