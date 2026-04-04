@@ -1,0 +1,71 @@
+{
+  "skill_name": "run",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我跑一下这个链接：https://lol2021.x.yupoo.com/albums/225167978?uid=1&isSubCate=false",
+      "expected_output": "不要直接假设是导出；应先确认是否要入库。若用户明确是入库，再路由到 catalog-ingestion 的 album ingest。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "先帮我看看这个分类大概有多少，再按前 50 条的规模抓取并落库：https://lol2021.x.yupoo.com/categories/4372478",
+      "expected_output": "识别为 inspect + ingest 场景，先走 catalog-ingestion 的 inspect path，再按 limit=50 路由到 ingest。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "把数据库里这个分类的鞋导出成导入表：--category-url https://lol2021.x.yupoo.com/categories/5140640 --output /tmp/march.xlsx",
+      "expected_output": "路由到 shoes-transformer。",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "把数据库里这批鞋导出来，并顺手补齐商品描述和 SEO：--source-id 225167978 --output /tmp/shoes.xlsx",
+      "expected_output": "路由到 shoes-transformer-with-team-content，而不是基础 shoes-transformer。",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "抓这个分类前 100 条并导出成鞋模板：https://lol2021.x.yupoo.com/categories/5140640，输出到 /tmp/march.xlsx",
+      "expected_output": "识别为两步顺序调度：先 catalog-ingestion，再 shoes-transformer。",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "抓这个分类前 100 条，导出时把标签也带上：鞋类,运动鞋,低帮鞋，分类是 https://lol2021.x.yupoo.com/categories/5140640，输出到 /tmp/march.xlsx",
+      "expected_output": "不要错误地塞进一条不支持 tags 的 workflow；应识别为先 catalog-ingestion，再 shoes-transformer 的顺序调度。",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "抓这个分类前 100 条，再帮我补团队文案导出：类目 https://lol2021.x.yupoo.com/categories/5140640，输出 /tmp/team.xlsx",
+      "expected_output": "不要错误地塞进一条不支持 postfill 的 workflow；应识别为先 catalog-ingestion，再 shoes-transformer-with-team-content 的顺序调度。",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "帮我把这个网站的数据都抓下来：https://example.com/products",
+      "expected_output": "拒绝。因为不是支持的 Yupoo ingest / DB export / repo skill 调度请求。",
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "把这个 Yupoo 分类全部爬完：https://lol2021.x.yupoo.com/categories/3779642",
+      "expected_output": "不能直接执行；应要求用户提供正整数 limit。",
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "导出一下",
+      "expected_output": "做一次最小澄清，判断是只导出、导出后补团队文案，还是先抓再导出。",
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "这个类目先看一下再跑：https://lol2021.x.yupoo.com/categories/4372478",
+      "expected_output": "不要重复确认 inspect 意图；应只补问正整数 limit，然后路由到 category inspect path。",
+      "files": []
+    }
+  ]
+}
