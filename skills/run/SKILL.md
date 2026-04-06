@@ -1,6 +1,6 @@
 ---
 name: run
-description: Use when the user asks to run,抓取,入库,导出,补商品描述/SEO, or otherwise process commerce-tool data without clearly naming the right skill. Trigger aggressively for vague Yupoo links, ambiguous workbook export requests, and crawl-then-export requests that should be routed to catalog-ingestion, shoes-transformer, or shoes-transformer-with-team-content.
+description: Use when the user asks to run,抓取,入库,导出,补商品描述/SEO, or otherwise process commerce-tool data without clearly naming the right skill. Trigger aggressively for vague Yupoo links, ambiguous workbook export requests, and crawl-then-export requests that should be routed to catalog-ingestion, shoes-transformer, or team-content.
 ---
 
 # run
@@ -13,13 +13,13 @@ It does not own business logic. Its job is to identify the user's intent, ask on
 It supports only these downstream skills:
 - `catalog-ingestion`
 - `shoes-transformer`
-- `shoes-transformer-with-team-content`
+- `team-content`
 
 Do not add a new shell wrapper or a parallel business path here.
 
 For combined requests like “先抓再导出”, chain the existing skills in order instead of bypassing them:
 1. dispatch to `catalog-ingestion`
-2. after ingest succeeds, dispatch to `shoes-transformer` or `shoes-transformer-with-team-content`
+2. after ingest succeeds, dispatch to `shoes-transformer` or `team-content`
 
 ## Accepted Inputs
 Route requests in these shapes.
@@ -57,7 +57,7 @@ Typical shape:
 
 Route it as:
 1. `catalog-ingestion`
-2. then `shoes-transformer` or `shoes-transformer-with-team-content`
+2. then `shoes-transformer` or `team-content`
 
 ## Rejected Inputs
 Reject or narrow the request when:
@@ -74,16 +74,16 @@ Reject or narrow the request when:
 | Yupoo category URL + positive limit + ingest intent | dispatch to `catalog-ingestion` |
 | Category inspection intent | dispatch to `catalog-ingestion` |
 | DB export only | dispatch to `shoes-transformer` |
-| DB export + team content postfill | dispatch to `shoes-transformer-with-team-content` |
+| DB export + team content postfill | dispatch to `team-content` |
 | Crawl category + export | dispatch to `catalog-ingestion`, then `shoes-transformer` |
-| Crawl category + export + team content postfill | dispatch to `catalog-ingestion`, then `shoes-transformer-with-team-content` |
+| Crawl category + export + team content postfill | dispatch to `catalog-ingestion`, then `team-content` |
 | Crawl category + export + `--tags` | dispatch to `catalog-ingestion`, then `shoes-transformer` |
 
 ## Required Project Entry Points
 Use these existing downstream skills and nothing else:
 - `catalog-ingestion`
 - `shoes-transformer`
-- `shoes-transformer-with-team-content`
+- `team-content`
 
 Dispatch with the Skill tool.
 
@@ -92,13 +92,13 @@ Important downstream constraints that must be respected when routing:
 - base export requires one selector plus `--output`
 - team-content export uses the same selector/output shape as base export
 - `--tags` belong to `shoes-transformer`
-- postfill belongs to `shoes-transformer-with-team-content`
+- postfill belongs to `team-content`
 - mixed crawl-plus-export requests should be split into two skill invocations, not pushed into a new wrapper
 
 Relevant existing implementations:
 - `skills/catalog-ingestion/SKILL.md`
 - `skills/shoes-transformer/SKILL.md`
-- `skills/shoes-transformer-with-team-content/SKILL.md`
+- `skills/team-content/SKILL.md`
 
 ## Clarification Rule
 If the request is already specific enough, route immediately.
@@ -121,11 +121,11 @@ Once the target path is clear and the minimum required inputs are available, dis
 Dispatch targets:
 - `catalog-ingestion`
 - `shoes-transformer`
-- `shoes-transformer-with-team-content`
+- `team-content`
 
 For chained requests:
 1. first invoke `catalog-ingestion`
-2. only after success, invoke `shoes-transformer` or `shoes-transformer-with-team-content`
+2. only after success, invoke `shoes-transformer` or `team-content`
 
 Do not:
 - treat `run` as a generic shell executor
@@ -141,7 +141,7 @@ Dispatch to `catalog-ingestion`.
 Dispatch to `shoes-transformer`.
 
 ### Export with team content
-Dispatch to `shoes-transformer-with-team-content`.
+Dispatch to `team-content`.
 
 ### Crawl then export
 Dispatch to `catalog-ingestion`, then dispatch to the export skill that matches the user's requested output.
@@ -176,7 +176,7 @@ When the request is unsupported:
 - “这个类目先看看规模，再抓前 50 条” → dispatch to `catalog-ingestion`
 - “这个类目先看一下再跑” + no limit → ask only for a positive limit, then dispatch to `catalog-ingestion`
 - “导出这个 source id 的鞋子到 xlsx” → dispatch to `shoes-transformer`
-- “导出完再把商品描述和 SEO 一起补上” → dispatch to `shoes-transformer-with-team-content`
+- “导出完再把商品描述和 SEO 一起补上” → dispatch to `team-content`
 - “抓这个分类前 100 条并导出到 xlsx” → dispatch to `catalog-ingestion` first, then `shoes-transformer`
-- “抓这个分类前 100 条并导出，再补团队文案” → dispatch to `catalog-ingestion` first, then `shoes-transformer-with-team-content`
+- “抓这个分类前 100 条并导出，再补团队文案” → dispatch to `catalog-ingestion` first, then `team-content`
 - “抓一下淘宝链接然后导出” → reject as unsupported

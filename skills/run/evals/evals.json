@@ -22,7 +22,7 @@
     {
       "id": 4,
       "prompt": "把数据库里这批鞋导出来，并顺手补齐商品描述和 SEO：--source-id 225167978 --output /tmp/shoes.xlsx",
-      "expected_output": "路由到 shoes-transformer-with-team-content，而不是基础 shoes-transformer。",
+      "expected_output": "路由到 team-content，而不是基础 shoes-transformer。",
       "files": []
     },
     {
@@ -40,7 +40,7 @@
     {
       "id": 7,
       "prompt": "抓这个分类前 100 条，再帮我补团队文案导出：类目 https://lol2021.x.yupoo.com/categories/5140640，输出 /tmp/team.xlsx",
-      "expected_output": "不要错误地塞进一条不支持 postfill 的 workflow；应识别为先 catalog-ingestion，再 shoes-transformer-with-team-content 的顺序调度。",
+      "expected_output": "不要错误地塞进一条不支持 postfill 的 workflow；应识别为先 catalog-ingestion，再 team-content 的顺序调度。",
       "files": []
     },
     {
