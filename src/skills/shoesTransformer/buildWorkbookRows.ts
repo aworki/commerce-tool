@@ -37,7 +37,7 @@ function buildSharedCells(item: ShoesNormalizedItem): ShoesWorkbookRow["cells"] 
     L: null,
     M: "双",
     N: null,
-    O: "Y",
+    O: "N",
     P: 2,
     Q: null,
     R: null,

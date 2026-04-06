@@ -40,6 +40,7 @@ describe("buildWorkbookRows", () => {
     expect(rows[0].cells.E).toBe("cover")
     expect(rows[0].cells.F).toBe("gallery-1\ngallery-2")
     expect(rows[0].cells.L).toBeNull()
+    expect(rows[0].cells.O).toBe("N")
     expect(rows[0].cells.X).toBe(["Size", "W US4=UK3.5=EUR36=CM23", "W US4.5=UK4=EUR36.5=CM23.5", "W US5=UK4.5=EUR37.5=CM23.5"].join("\n"))
     expect(rows[0].cells.AB).toBe("Size:W US4=UK3.5=EUR36=CM23")
     expect(rows[0].cells.AF).toBe(99)
