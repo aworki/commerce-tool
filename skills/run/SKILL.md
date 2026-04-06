@@ -10,6 +10,11 @@ This skill is the top-level dispatcher for the commerce-tool workflows in this r
 
 It does not own business logic. Its job is to identify the user's intent, ask one narrow clarification only when required, and then dispatch to the existing repo-local skills with the Skill tool.
 
+When a downstream export needs an output workbook path and the user does not provide one, this skill must assign a default output path instead of asking for it:
+- prefer the current working directory
+- if no working directory is available, use the current user's Desktop
+- do not leave the export without an output path
+
 It supports only these downstream skills:
 - `catalog-ingestion`
 - `shoes-transformer`
@@ -65,7 +70,7 @@ Reject or narrow the request when:
 - the request is for arbitrary shell commands or unrelated repo tasks
 - the request asks to export data that is not already in the local database
 - a category ingest request has no positive limit
-- an export request has no selector or no output path
+- an export request has no selector
 
 ## Routing Matrix
 | Request shape | Route |
@@ -89,7 +94,7 @@ Dispatch with the Skill tool.
 
 Important downstream constraints that must be respected when routing:
 - category ingest requires a positive limit
-- base export requires one selector plus `--output`
+- base export requires one selector plus `--output`, and `run` must synthesize the `--output` path when the user omits it
 - team-content export uses the same selector/output shape as base export
 - `--tags` belong to `shoes-transformer`
 - postfill belongs to `team-content`
@@ -115,6 +120,11 @@ For category inspection cases:
 
 Do not ask for information the user already gave.
 
+For export requests, do not ask for an output path when the selector is already present and the user simply omitted the filename. Generate the output path by this rule:
+- first choice: current working directory
+- fallback: current user's Desktop
+- choose a clear `.xlsx` filename derived from the request when possible
+
 ## Dispatch Rules
 Once the target path is clear and the minimum required inputs are available, dispatch immediately with the Skill tool.
 
@@ -130,7 +140,7 @@ For chained requests:
 Do not:
 - treat `run` as a generic shell executor
 - add a new shell wrapper for routing
-- ask extra questions after the URL, limit, selector, or output path is already present
+- ask extra questions after the URL, limit, or selector is already present just to obtain an output path
 - reimplement the underlying logic instead of routing
 
 ## Fast Path
@@ -153,6 +163,8 @@ When routing succeeds:
 - briefly state which skill path was selected
 - dispatch to the existing specialized skill
 - for crawl-plus-export requests, state that it will run in two steps
+- if `run` generated the output path automatically, state that path explicitly
+- when any export finishes, tell the user which directory the workbook was written to and include the full output file path
 - show the downstream skill result directly so the user can verify inserted / updated / skipped / output path / warnings
 
 When clarification is required:
@@ -168,7 +180,8 @@ When the request is unsupported:
 - Treating `run` as a separate business workflow instead of a router
 - Creating a new shell wrapper instead of dispatching to existing skills
 - Assuming category ingest can run without a positive limit
-- Assuming export can run without a selector or output path
+- Assuming export can run without a selector
+- Asking the user for an output path even though `run` should generate one by default
 - Reimplementing logic instead of routing to existing skills
 
 ## Quick Examples

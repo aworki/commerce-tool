@@ -36,8 +36,9 @@ This is a chained route:
 So the request should still make clear:
 - category URL
 - positive limit
-- output path
 - whether tags or team-content postfill are needed
+
+If output path is omitted, `run` should default the workbook path to the current working directory. If no working directory is available, it should default to the current user's Desktop.
 
 ## Requests that need one short follow-up
 - `帮我跑一下这个链接：https://lol2021.x.yupoo.com/albums/225167978?uid=1&isSubCate=false`
@@ -48,5 +49,4 @@ So the request should still make clear:
 - non-Yupoo URLs for crawl or ingest
 - category requests without a positive limit
 - export requests without a selector
-- export requests without an output path
 - requests that omit whether crawl-plus-export should just导出, 还是还要补团队文案
