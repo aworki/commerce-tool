@@ -34,6 +34,12 @@ function writeRowValues(row: ExcelJS.Row, data: ShoesWorkbookRow) {
   })
 }
 
+function clearRowValues(row: ExcelJS.Row) {
+  SHOES_COLUMNS.forEach((column) => {
+    row.getCell(column).value = null
+  })
+}
+
 export async function writeShoesWorkbook(input: {
   templatePath: string
   outputPath: string
@@ -48,11 +54,12 @@ export async function writeShoesWorkbook(input: {
     throw new Error("template workbook is missing the 商品信息 sheet")
   }
 
+  const originalRowCount = sheet.rowCount
   const firstRowTemplate = captureRowTemplate(sheet.getRow(5))
-  const continuationRowTemplate = captureRowTemplate(sheet.getRow(Math.min(6, sheet.rowCount)))
+  const continuationRowTemplate = captureRowTemplate(sheet.getRow(Math.min(6, originalRowCount)))
 
-  if (sheet.rowCount > 4) {
-    sheet.spliceRows(5, sheet.rowCount - 4)
+  if (originalRowCount > 4) {
+    sheet.spliceRows(5, originalRowCount - 4)
   }
 
   input.rows.forEach((rowData, index) => {
@@ -60,6 +67,10 @@ export async function writeShoesWorkbook(input: {
     applyRowTemplate(row, rowData.kind === "first" ? firstRowTemplate : continuationRowTemplate)
     writeRowValues(row, rowData)
   })
+
+  for (let rowNumber = 5 + input.rows.length; rowNumber <= originalRowCount; rowNumber += 1) {
+    clearRowValues(sheet.getRow(rowNumber))
+  }
 
   await mkdir(dirname(input.outputPath), { recursive: true })
   await workbook.xlsx.writeFile(input.outputPath)

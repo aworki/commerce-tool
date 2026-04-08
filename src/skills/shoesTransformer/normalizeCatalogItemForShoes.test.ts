@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { cleanShoesTitle, normalizeCatalogItemForShoes, parseSizeValuesFromDescription } from "./normalizeCatalogItemForShoes.ts"
+import { cleanShoesTitle, normalizeCatalogItemForShoes } from "./normalizeCatalogItemForShoes.ts"
 import type { CatalogItemRecord } from "../../db/catalogItems.ts"
 
 function createCatalogItem(overrides: Partial<CatalogItemRecord> = {}): CatalogItemRecord {
@@ -10,7 +10,7 @@ function createCatalogItem(overrides: Partial<CatalogItemRecord> = {}): CatalogI
     sourceUrl: "https://lol2021.x.yupoo.com/albums/225167978",
     sourceId: "225167978",
     title: "【DA7OG】粉低勾 OG版乔丹1代低帮 IQ7604-100 Travis Scott x Air Jordan 1 Retro Low OG 'Muslin Pink'",
-    description: "尺码#36-#37 545126646 OG乔1",
+    description: "尺码#40-#48.5\n545026646\nUS7=UK6=EUR40=CM25\nUS7.5=UK6.5=EUR40.5=CM25.5\nKZ乔4",
     images: ["https://img.example/cover.jpg", "https://img.example/2.jpg"],
     extra: {},
     createdAt: "2026-03-27T00:00:00.000Z",
@@ -18,16 +18,6 @@ function createCatalogItem(overrides: Partial<CatalogItemRecord> = {}): CatalogI
     ...overrides,
   }
 }
-
-describe("parseSizeValuesFromDescription", () => {
-  test("keeps a range exactly as written instead of expanding it", () => {
-    expect(parseSizeValuesFromDescription("尺码#36-#37 545126646 OG乔1")).toEqual(["36-37"])
-  })
-
-  test("splits explicit size lists without further processing", () => {
-    expect(parseSizeValuesFromDescription("尺码 40/40.5/41/41")).toEqual(["40", "40.5", "41", "41"])
-  })
-})
 
 describe("normalizeCatalogItemForShoes", () => {
   test("keeps only the content after the last Chinese character in mixed-language titles", () => {
@@ -57,7 +47,10 @@ describe("normalizeCatalogItemForShoes", () => {
     expect(normalized.cleanTitle.includes(" OG IQ7604-100")).toBe(false)
     expect(normalized.coverImageUrl).toBe("https://img.example/cover.jpg")
     expect(normalized.galleryImageUrls).toEqual(["https://img.example/2.jpg"])
-    expect(normalized.sizeValues).toEqual(["36-37"])
+    expect(normalized.sizeValues).toEqual([
+      "US7=UK6=EUR40=CM25",
+      "US7.5=UK6.5=EUR40.5=CM25.5",
+    ])
     expect(normalized.tags).toEqual(["鞋类", "运动鞋", "低帮鞋"])
     expect(normalized.warnings.find((warning) => warning.field === "D")?.kind).toBe("manual_fill_product_description")
     expect(normalized.warnings.find((warning) => warning.field === "G")?.kind).toBe("manual_fill_key_information")
@@ -81,7 +74,7 @@ describe("normalizeCatalogItemForShoes", () => {
 
   test("warns when required manual fields cannot be inferred", () => {
     const normalized = normalizeCatalogItemForShoes(createCatalogItem({
-      description: "没有尺码信息",
+      description: "",
       images: [],
     }), {
       tags: [],

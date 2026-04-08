@@ -18,33 +18,14 @@ export function cleanShoesTitle(title: string): string {
   return suffix || compactedTitle
 }
 
-function extractSizeFragment(description: string): string | undefined {
-  const match = description.match(/尺码/i)
-
-  if (!match || match.index === undefined) {
-    return undefined
-  }
-
-  const tail = description.slice(match.index + match[0].length).trimStart()
-  const fragment = tail.match(/^[#:：\s]*([0-9.#,，、/\-~至到 ]+)/)?.[1]
-  return fragment ? compactText(fragment.replace(/#/g, "")) : undefined
-}
-
 export function parseSizeValuesFromDescription(description: string): string[] {
-  const fragment = extractSizeFragment(description)
-
-  if (!fragment) {
-    return []
-  }
-
-  return fragment
-    .split(/[\s,，、/]+/)
-    .map((token) => token.trim())
+  return description
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
     .filter(Boolean)
-    .filter((token) => {
-      const values = token.match(/\d+(?:\.\d+)?/g)?.map(Number) ?? []
-      return values.length > 0 && values.every((value) => value >= 20 && value <= 60)
-    })
+    .filter((line) => line.includes("=") || line.includes("/"))
 }
 
 function createWarning(
@@ -68,7 +49,7 @@ export function normalizeCatalogItemForShoes(item: CatalogItemRecord, options: {
   }
 
   if (sizeValues.length === 0) {
-    warnings.push(createWarning(item.sourceId, "X/AB", "missing_size_spec_and_sku", "未能从商品描述解析尺码，需要人工补充规格和 SKU"))
+    warnings.push(createWarning(item.sourceId, "X/AB", "missing_size_spec_and_sku", "商品描述为空，需人工补充规格和 SKU"))
   }
 
   warnings.push(

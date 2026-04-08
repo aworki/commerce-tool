@@ -19,7 +19,7 @@ const SAMPLE_HTML = `
         "@context": "https://schema.org",
         "@type": "ImageGallery",
         "name": "【DA7OG】粉低勾 OG版乔丹1代低帮 IQ7604-100 Travis Scott x Air Jordan 1 Retro Low OG 'Muslin Pink'",
-        "description": "尺码#36-#47.5 545126646 OG乔1",
+        "description": "US7=UK6=EUR40=CM25\\nUS7.5=UK6.5=EUR40.5=CM25.5\\nUS8=UK7=EUR41=CM26",
         "url": "https://lol2021.x.yupoo.com/albums/225167978",
         "datePublished": "2026-02-06",
         "dateModified": "2026-02-09"
@@ -71,6 +71,7 @@ describe("catalog ingestion", () => {
     ])
     expect(raw.logicalImageCount).toBe(2)
     expect(raw.rawTitle).toContain("Travis Scott")
+    expect(raw.rawDescription).toBe("US7=UK6=EUR40=CM25\nUS7.5=UK6.5=EUR40.5=CM25.5\nUS8=UK7=EUR41=CM26")
   })
 
   test("normalizes and persists an album item idempotently", async () => {
@@ -83,6 +84,7 @@ describe("catalog ingestion", () => {
     expect(first.action).toBe("inserted")
     expect(second.action).toBe("skipped")
     expect(item.sourceId).toBe("225167978")
+    expect(item.description).toBe("US7=UK6=EUR40=CM25\nUS7.5=UK6.5=EUR40.5=CM25.5\nUS8=UK7=EUR41=CM26")
     expect(item.images.length).toBe(2)
     expect(item.extra.album_id).toBe("225167978")
   })

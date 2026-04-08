@@ -10,6 +10,8 @@ This skill is an interactive postfill wrapper over the base `shoes-transformer` 
 
 It does not own a separate export pipeline. It first delegates workbook generation to `shoes-transformer`, which already requires DB-backed canonical OSS image URLs, and then adds the optional team-template replace/postfill step only after a successful export.
 
+Because exported products may span multiple workbook rows for multiple specs/SKUs, team-content replacement must only update the product's first row. Do not write D/G/T/U into continuation rows.
+
 ## Accepted Inputs
 Use the same selectors as `shoes-transformer`:
 - `--id <catalog-item-id>`
@@ -58,4 +60,5 @@ When the wrapper finishes, show the JSON result directly so the user can verify:
 - Trying to use this wrapper to crawl new products
 - Expecting the original `shoes-transformer` skill to prompt interactively
 - Entering unsupported placeholder tokens other than `{{title}}`
+- Writing team-content fields into every SKU row instead of only the product's first row
 - Forgetting that the saved template list is chosen by `id` and labeled by `team_description`

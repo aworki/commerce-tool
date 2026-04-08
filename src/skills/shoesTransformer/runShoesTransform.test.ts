@@ -17,7 +17,7 @@ function createCatalogItem(overrides: Partial<CatalogItemRecord> = {}): CatalogI
     sourceUrl: "https://lol2021.x.yupoo.com/albums/225167978",
     sourceId: "225167978",
     title: "【DA7OG】粉低勾 OG版乔丹1代低帮 IQ7604-100 Travis Scott x Air Jordan 1 Retro Low OG 'Muslin Pink'",
-    description: "尺码#36-#37 545126646 OG乔1",
+    description: "US7=UK6=EUR40=CM25\nUS7.5=UK6.5=EUR40.5=CM25.5\nUS8=UK7=EUR41=CM26",
     images: [
       `${VALID_OSS_PUBLIC_BASE_URL}/catalog/yupoo/4372478/225167978/00-cover.jpg`,
       `${VALID_OSS_PUBLIC_BASE_URL}/catalog/yupoo/4372478/225167978/01-gallery.jpg`,
@@ -95,7 +95,7 @@ describe("runShoesTransformExecution", () => {
             id: 2,
             sourceId: "beta-2",
             title: "【CA0XH】复刻愤怒的公牛 头层皮乔丹4代篮球鞋 FQ8138-600 Air Jordan 4 Retro 'Toro Bravo' 2026",
-            description: "尺码 40/40.5/41",
+            description: "US7=UK6=EUR40=CM25\nUS7.5=UK6.5=EUR40.5=CM25.5\nUS8=UK7=EUR41=CM26",
             images: [
               `${VALID_OSS_PUBLIC_BASE_URL}/catalog/yupoo/beta/beta-2/00-cover.jpg`,
               `${VALID_OSS_PUBLIC_BASE_URL}/catalog/yupoo/beta/beta-2/01-gallery.jpg`,

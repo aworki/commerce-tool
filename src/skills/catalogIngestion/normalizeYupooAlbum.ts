@@ -4,6 +4,16 @@ function compactText(input: string): string {
   return input.replace(/\s+/g, " ").trim()
 }
 
+function compactMultilineText(input: string): string {
+  return input
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .map((line) => compactText(line))
+    .filter(Boolean)
+    .join("\n")
+}
+
 export function normalizeYupooAlbum(
   raw: RawYupooAlbum,
   ossImageUrls: string[],
@@ -15,7 +25,7 @@ export function normalizeYupooAlbum(
     sourceUrl: raw.sourceUrl,
     sourceId: raw.albumId,
     title: compactText(raw.rawTitle),
-    description: compactText(raw.rawDescription),
+    description: compactMultilineText(raw.rawDescription),
     images: ossImageUrls,
     extra: {
       source_url: raw.sourceUrl,

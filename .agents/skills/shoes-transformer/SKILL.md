@@ -10,6 +10,8 @@ This skill is the single base export entrypoint for shoe workbooks. It exports s
 
 It does not crawl Yupoo pages and should stay decoupled from `catalog-ingestion`. Workbook image cells must come from the canonical OSS public URLs already stored in `catalog_items.images_json`; if a row still contains legacy non-OSS image URLs, fix the data upstream instead of expecting export-time replacement.
 
+Rows 1-4 in the workbook are fixed template/header rows and must never be modified. Export data must only append from row 5 downward.
+
 ## Accepted Inputs
 Use selectors that already exist in the local database:
 - `--id <catalog-item-id>`
@@ -73,4 +75,5 @@ When the command is invalid, explain which selector or output argument is missin
 - Trying to use this skill to crawl new products
 - Forgetting `--output`
 - Forgetting to provide category tags when `L 标签` should be filled
+- Modifying workbook rows 1-4 instead of only appending product rows from row 5 downward
 - Expecting the skill to infer price or logistics template from the current DB schema

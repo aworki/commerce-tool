@@ -74,13 +74,18 @@ function extractTitleFallback(html: string): string | undefined {
 
 function cleanDescription(input: string): string {
   return input
-    .replace(/\s+/g, " ")
-    .replace(/查看原图/g, "")
-    .replace(/图片标题：/g, "")
-    .replace(/所属相册：/g, "")
-    .replace(/所属分类：无/g, "")
-    .replace(/图片描述：/g, "")
-    .trim()
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .map((line) => line
+      .replace(/查看原图/g, "")
+      .replace(/图片标题：/g, "")
+      .replace(/所属相册：/g, "")
+      .replace(/所属分类：无/g, "")
+      .replace(/图片描述：/g, "")
+      .trim())
+    .filter(Boolean)
+    .join("\n")
 }
 
 function extractVisibleDescription(html: string, rawTitle: string): string {

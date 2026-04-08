@@ -36,6 +36,11 @@ async function createTemplateWorkbook() {
   sheet.getCell("AB6").font = { name: "宋体", italic: true }
   sheet.getCell("AF6").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F2F2" } }
 
+  sheet.getCell("AB7").value = "Size:legacy-1"
+  sheet.getCell("AD7").value = 99
+  sheet.getCell("AB8").value = "Size:legacy-2"
+  sheet.getCell("AD8").value = 99
+
   units.getCell("A1").value = "双"
 
   await workbook.xlsx.writeFile(templatePath)
@@ -54,14 +59,16 @@ describe("writeShoesWorkbook", () => {
           E: "https://img.example/cover.jpg",
           X: "Size\n36\n36.5",
           AB: "Size:36",
-          AF: 99,
+          AD: null,
+          AF: null,
         },
       },
       {
         kind: "continuation",
         cells: {
           AB: "Size:36.5",
-          AF: 99,
+          AD: null,
+          AF: null,
         },
       },
     ]
@@ -80,6 +87,14 @@ describe("writeShoesWorkbook", () => {
     expect(sheet?.getCell("AB6").value).toBe("Size:36.5")
     expect(sheet?.getCell("B5").font?.name).toBe("宋体")
     expect(sheet?.getCell("AB6").font?.italic).toBe(true)
+    expect(sheet?.getCell("AD5").value).toBeNull()
+    expect(sheet?.getCell("AF5").value).toBeNull()
+    expect(sheet?.getCell("AD6").value).toBeNull()
+    expect(sheet?.getCell("AF6").value).toBeNull()
+    expect(sheet?.getCell("AB7").value).toBeNull()
+    expect(sheet?.getCell("AD7").value).toBeNull()
+    expect(sheet?.getCell("AB8").value).toBeNull()
+    expect(sheet?.getCell("AD8").value).toBeNull()
     expect(units?.getCell("A1").value).toBe("双")
   })
 })

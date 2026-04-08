@@ -12,6 +12,8 @@ It does not own a separate export pipeline. It first delegates workbook generati
 
 This skill must never invent a team name or any team template content. Team identity and all template fields must come from the user or from an already saved template that the user explicitly confirms.
 
+Because exported products may span multiple workbook rows for multiple specs/SKUs, team-content replacement must only update the product's first row. Do not write D/G/T/U into continuation rows.
+
 ## Accepted Inputs
 Use the same selectors as `shoes-transformer`:
 - `--id <catalog-item-id>`
@@ -75,4 +77,5 @@ When team confirmation or template creation is needed:
 - Expecting the original `shoes-transformer` skill to prompt interactively
 - Guessing the team or auto-selecting a roughly similar saved template
 - Inventing template content when the team has no saved template
+- Writing team-content fields into every SKU row instead of only the product's first row
 - Entering unsupported placeholder tokens other than `{{title}}`
